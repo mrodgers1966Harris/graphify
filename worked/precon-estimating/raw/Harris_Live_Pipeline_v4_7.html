@@ -1,0 +1,2513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Harris Associates — Weekly Pipeline</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600&display=swap');
+  :root {
+    --black:#0a0a0a; --white:#f5f3ee; --gold:#c8991a; --gold-light:#e8b820;
+    --gray-dark:#1e1e1e; --gray-light:#888;
+    --mono:'IBM Plex Mono',monospace; --sans:'IBM Plex Sans',sans-serif; --display:'Bebas Neue',sans-serif;
+    --opp-tint:#eef6fb; --oc-tint:#eef6ee; --bgt-tint:#fdf6e3; --bid-tint:#fff0f0;
+    --red:#c62828; --amber:#e65100; --green:#2e7d32;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#eceae4; color:var(--black); font-family:var(--sans); font-size:12px; }
+
+  /* TOP BAR */
+  .topbar { background:var(--black); padding:0 24px; height:52px; display:flex; align-items:center; gap:16px; position:sticky; top:0; z-index:200; box-shadow:0 2px 16px rgba(0,0,0,0.5); }
+  .tb-logo { font-family:var(--display); font-size:20px; letter-spacing:3px; color:var(--white); white-space:nowrap; }
+  .tb-logo span { color:var(--gold); }
+  .tb-date { font-family:var(--mono); font-size:9px; color:#555; letter-spacing:1px; white-space:nowrap; }
+  .tb-live { background:#0d1f0d; color:#4caf50; font-family:var(--mono); font-size:8px; font-weight:600; padding:3px 8px; border-radius:3px; letter-spacing:1px; border:1px solid #2a5a2a; }
+  .tb-pills { margin-left:auto; display:flex; gap:5px; align-items:center; }
+  .tb-pill { font-family:var(--mono); font-size:9px; font-weight:600; padding:3px 9px; border-radius:10px; white-space:nowrap; }
+
+  /* TTH BANNER */
+  .tth-banner { background:#1a1400; border-bottom:2px solid var(--gold); padding:8px 24px; display:flex; gap:0; align-items:center; flex-wrap:wrap; }
+  .tth-item { display:flex; flex-direction:column; align-items:center; padding:0 20px; border-right:1px solid #3a2e00; }
+  .tth-item:last-of-type { border-right:none; }
+  .tth-val { font-family:var(--display); font-size:22px; color:var(--gold-light); line-height:1; }
+  .tth-lbl { font-family:var(--mono); font-size:8px; letter-spacing:1px; color:#666; margin-top:2px; text-align:center; }
+  .tth-note { font-family:var(--mono); font-size:9px; color:#555; font-style:italic; margin-left:auto; max-width:280px; text-align:right; line-height:1.5; }
+
+  /* ALERTS */
+  .alerts { background:#150a00; border-bottom:1px solid #2a1800; padding:7px 24px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .alerts-lbl { font-family:var(--mono); font-size:8px; letter-spacing:2px; color:var(--gold); text-transform:uppercase; flex-shrink:0; }
+  .alert { font-size:10.5px; padding:2px 9px; border-radius:3px; white-space:nowrap; }
+  .alert-red { background:#2a0a0a; border:1px solid #6a1a1a; color:#ffaaaa; }
+  .alert-amber { background:#2a1400; border:1px solid #6a3a00; color:#ffcc80; }
+
+  /* WRAPPER */
+  .wrapper { padding:14px 24px 60px; }
+
+  /* PHASE GROUP */
+  .phase-group { margin-bottom:10px; border-radius:5px; overflow:hidden; box-shadow:0 1px 6px rgba(0,0,0,0.1); }
+  .phase-bar { display:flex; align-items:center; gap:12px; padding:9px 16px; cursor:pointer; user-select:none; transition:filter 0.15s; }
+  .phase-bar:hover { filter:brightness(1.1); }
+  .ph-code { font-family:var(--mono); font-size:14px; font-weight:600; letter-spacing:3px; min-width:72px; }
+  .ph-name { font-family:var(--display); font-size:17px; letter-spacing:1px; flex:1; }
+  .ph-stats { font-family:var(--mono); font-size:9px; opacity:0.7; display:flex; gap:14px; align-items:center; }
+  .ph-arrow { font-size:10px; opacity:0.4; transition:transform 0.2s; margin-left:4px; }
+  .collapsed .ph-arrow { transform:rotate(-90deg); }
+  .collapsed .phase-body { display:none; }
+
+  /* TABLE */
+  .phase-body { background:#fff; }
+  table { width:100%; border-collapse:collapse; }
+  thead tr { background:#f5f3ee; }
+  th { padding:6px 8px; text-align:left; font-family:var(--mono); font-size:8px; letter-spacing:1.5px; text-transform:uppercase; color:var(--gray-light); font-weight:600; border-bottom:2px solid #e8e4da; white-space:nowrap; }
+  td { padding:7px 8px; border-bottom:1px solid #f0ede6; vertical-align:middle; }
+  tr:last-child td { border-bottom:none; }
+
+  tr.opp-row td { background:var(--opp-tint); } tr.opp-row:hover td { background:#e4f0f8; }
+  tr.oc-row td  { background:var(--oc-tint);  } tr.oc-row:hover td  { background:#e0f0e0; }
+  tr.bgt-row td { background:var(--bgt-tint); } tr.bgt-row:hover td { background:#f6eed8; }
+  tr.bid-row td { background:var(--bid-tint); } tr.bid-row:hover td { background:#fce8e8; }
+
+  /* CELL TYPES */
+  .c-num { font-family:var(--mono); font-size:9px; color:#888; white-space:nowrap; }
+  .c-value { font-family:var(--mono); font-size:11px; font-weight:600; white-space:nowrap; }
+  .c-value.missing { color:#ccc; font-style:italic; font-weight:400; }
+  .c-location { font-size:11px; color:#666; white-space:nowrap; }
+  .c-location.missing { color:#ccc; font-style:italic; }
+  .c-notes { font-size:11px; color:#555; line-height:1.4; }
+  .c-notes.missing { color:#ccc; font-style:italic; }
+  .c-tth { font-family:var(--mono); font-size:11px; font-weight:600; color:#1a6b1a; white-space:nowrap; }
+  .c-tth.tth-missing { color:#ccc; font-style:italic; font-weight:400; }
+
+  /* BC LINK — the key feature */
+  .c-name { font-weight:600; font-size:12px; color:var(--black); }
+  .bc-link {
+    color:var(--black);
+    text-decoration:none;
+    display:inline-flex;
+    align-items:center;
+    gap:4px;
+    border-bottom:1px dashed transparent;
+    transition:all 0.15s;
+    padding-bottom:1px;
+  }
+  .bc-link:hover {
+    color:#1565c0;
+    border-bottom-color:#1565c0;
+  }
+  .bc-icon {
+    font-size:9px;
+    opacity:0;
+    transition:opacity 0.15s;
+    color:#1565c0;
+    font-style:normal;
+    font-weight:400;
+  }
+  .bc-link:hover .bc-icon { opacity:1; }
+
+  /* Tooltip on hover */
+  .bc-link::after {
+    content:'Open in BuildingConnected';
+    position:absolute;
+    background:var(--black);
+    color:#7ec8e3;
+    font-family:var(--mono);
+    font-size:9px;
+    font-weight:600;
+    letter-spacing:1px;
+    padding:4px 10px;
+    border-radius:3px;
+    white-space:nowrap;
+    margin-top:20px;
+    margin-left:-8px;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity 0.15s;
+    z-index:500;
+    box-shadow:0 2px 8px rgba(0,0,0,0.3);
+  }
+  .bc-link:hover::after { opacity:1; }
+  td { position:relative; }
+
+  /* DATES */
+  .bid-date { font-family:var(--mono); font-size:10px; font-weight:600; white-space:nowrap; }
+  .bd-today  { color:#fff; background:var(--red); padding:2px 5px; border-radius:3px; animation:pulse 1.2s infinite; }
+  .bd-over   { color:var(--red); }
+  .bd-urgent { color:var(--amber); }
+  .bd-soon   { color:#f57f17; }
+  .bd-ok     { color:var(--green); }
+  .bd-none   { color:#ccc; font-style:italic; font-weight:400; }
+  .bd-na     { color:#999; font-family:var(--mono); font-size:10px; font-weight:600; letter-spacing:1px; }
+  .tth-tbd   { color:#e65100; font-family:var(--mono); font-size:10px; font-weight:600; font-style:normal; letter-spacing:0.5px; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
+
+  /* ESTIMATOR PILLS */
+  .est-wrap { display:flex; gap:3px; flex-wrap:wrap; }
+  .est-pill { font-family:var(--mono); font-size:9px; font-weight:600; padding:2px 7px; border-radius:10px; white-space:nowrap; }
+  .ep-jeff   { background:#1a1a2e; color:#7ec8e3; }
+  .ep-joshua { background:#1a2e1a; color:#81c784; }
+  .ep-austin { background:#2e1a00; color:#e8b820; }
+  .ep-bryan  { background:#0a2e2e; color:#80cbc4; }
+  .ep-none   { color:#ccc; font-style:italic; font-size:11px; }
+
+  /* PROBABILITY */
+  .prob-badge { display:flex; flex-direction:column; align-items:center; gap:3px; min-width:44px; font-family:var(--mono); font-size:10px; font-weight:600; }
+  .prob-low  { color:#888; }
+  .prob-mid  { color:var(--amber); }
+  .prob-high { color:var(--green); }
+  .prob-bar  { width:40px; height:4px; background:#e0ddd5; border-radius:2px; overflow:hidden; }
+  .prob-fill { height:100%; border-radius:2px; }
+  .prob-low .prob-fill  { background:#bbb; }
+  .prob-mid .prob-fill  { background:var(--amber); }
+  .prob-high .prob-fill { background:var(--green); }
+
+  /* COL WIDTHS */
+  .col-num  { width:9%; }
+  .col-name { width:16%; }
+  .col-val  { width:7%; }
+  .col-loc  { width:9%; }
+  .col-date { width:9%; }
+  .col-est  { width:9%; }
+  .col-prob { width:6%; }
+  .col-tth  { width:6%; }
+  .col-notes{ width:29%; }
+
+  /* FOOTER */
+  .footnote { background:var(--black); color:#444; padding:12px 24px; font-family:var(--mono); font-size:9px; letter-spacing:1px; display:flex; justify-content:space-between; position:fixed; bottom:0; left:0; right:0; z-index:100; }
+  .footnote span { color:var(--gold); }
+
+  /* DASHBOARD */
+  .dashboard {
+    background: #111;
+    border-bottom: 1px solid #222;
+    padding: 16px 24px;
+    display: flex;
+    gap: 0;
+    align-items: stretch;
+    flex-wrap: nowrap;
+  }
+  .dash-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+  }
+  .dash-section-label {
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #444;
+    padding-left: 2px;
+  }
+  .dash-divider {
+    width: 1px;
+    background: #222;
+    margin: 0 20px;
+    flex-shrink: 0;
+  }
+  .dash-cards {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+  }
+  .dash-card {
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    border-radius: 4px;
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+  }
+  .dash-card-gold {
+    background: #1a1400;
+    border-color: var(--gold);
+  }
+  .dash-card-alert {
+    background: #1a0a0a;
+    border-color: #4a1a1a;
+  }
+  .dash-phase {
+    align-items: center;
+    text-align: center;
+  }
+  .dash-card-value {
+    font-family: var(--display);
+    font-size: 28px;
+    line-height: 1;
+    color: var(--gold-light);
+    letter-spacing: 1px;
+  }
+  .dash-card-alert .dash-card-value { color: #ef9a9a; }
+  .dash-phase .dash-card-value { font-size: 26px; }
+  .dash-card-label {
+    font-family: var(--mono);
+    font-size: 8.5px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #888;
+    margin-top: 2px;
+  }
+  .dash-card-sub {
+    font-size: 9px;
+    color: #444;
+    font-style: italic;
+    margin-top: 1px;
+  }
+
+  /* ESTIMATOR CARDS */
+  .dash-est {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    flex: 1.5;
+  }
+  .dash-est-avatar {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-size: 10px; font-weight: 600;
+    flex-shrink: 0;
+  }
+  .ep-jeff-bg   { background: #1a1a2e; color: #7ec8e3; }
+  .ep-joshua-bg { background: #1a2e1a; color: #81c784; }
+  .ep-austin-bg { background: #2e1a00; color: #e8b820; }
+  .dash-est-info { flex: 1; min-width: 0; }
+  .dash-est-name { font-size: 11px; font-weight: 600; color: #ccc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dash-est-role { font-size: 9px; color: #444; margin-top: 1px; }
+  .dash-est-count {
+    font-family: var(--display); font-size: 24px; line-height: 1;
+    flex-shrink: 0;
+  }
+  .ep-jeff-color   { color: #7ec8e3; }
+  .ep-joshua-color { color: #81c784; }
+  .ep-austin-color { color: #e8b820; }
+  .dash-est-bar {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    height: 3px; background: #222; border-radius: 0 0 4px 4px;
+    overflow: hidden;
+  }
+  .dash-card.dash-est { position: relative; padding-bottom: 12px; overflow: hidden; }
+  .dash-est-fill { height: 100%; border-radius: 2px; }
+  .ep-jeff-fill   { background: #7ec8e3; }
+  .ep-joshua-fill { background: #81c784; }
+  .ep-austin-fill { background: #e8b820; }
+  .dash-est-total {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    flex: 0.7;
+    background: #141414;
+    border-color: #222;
+  }
+  .dash-est-total-label {
+    font-family: var(--mono); font-size: 8px;
+    letter-spacing: 1px; text-transform: uppercase;
+    color: #444; line-height: 1.4;
+  }
+  .dash-est-total-val {
+    font-family: var(--display); font-size: 28px;
+    color: var(--gold); line-height: 1; margin-top: 4px;
+  }
+  .dash-est-total-val span {
+    font-family: var(--mono); font-size: 9px;
+    color: #555; font-weight: 400; margin-left: 2px;
+    vertical-align: middle;
+  }
+
+
+  /* INLINE EDITING */
+  .editable {
+    cursor: pointer;
+    border-radius: 3px;
+    transition: background 0.15s;
+    padding: 2px 4px;
+    margin: -2px -4px;
+    position: relative;
+  }
+  .editable:hover {
+    background: rgba(200,153,26,0.12);
+    outline: 1px dashed rgba(200,153,26,0.4);
+  }
+  .editable:hover::after {
+    content: '✎';
+    position: absolute;
+    right: -14px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 9px;
+    color: var(--gold);
+    opacity: 0.7;
+  }
+  .editable.editing {
+    background: #fff;
+    outline: 2px solid var(--gold);
+    cursor: text;
+  }
+  .editable.modified {
+    background: rgba(200,153,26,0.08);
+    outline: 1px solid rgba(200,153,26,0.3);
+  }
+  .editable.modified::before {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 5px; height: 5px;
+    background: var(--gold);
+    border-radius: 0 3px 0 3px;
+  }
+
+  /* PROB INLINE EDITOR */
+  .prob-editable {
+    cursor: pointer;
+    border-radius: 3px;
+    padding: 2px;
+    transition: background 0.15s;
+  }
+  .prob-editable:hover {
+    background: rgba(200,153,26,0.12);
+    outline: 1px dashed rgba(200,153,26,0.4);
+  }
+  .prob-editable.modified .prob-badge::after {
+    content: ' ✎';
+    font-size: 8px;
+    color: var(--gold);
+  }
+
+  /* SAVE BAR */
+  .save-bar {
+    position: fixed;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--black);
+    border: 1px solid var(--gold);
+    border-radius: 6px;
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    z-index: 300;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+    transition: transform 0.3s ease;
+    white-space: nowrap;
+  }
+  .save-bar.visible {
+    transform: translateX(-50%) translateY(0);
+  }
+  .save-bar-text {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--gold);
+    letter-spacing: 1px;
+  }
+  .save-bar-count {
+    font-family: var(--display);
+    font-size: 18px;
+    color: var(--gold-light);
+    min-width: 20px;
+    text-align: center;
+  }
+  .save-bc-btn {
+    background: var(--gold);
+    color: var(--black);
+    border: none;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 7px 16px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .save-bc-btn:hover { background: var(--gold-light); }
+  .save-bc-btn:disabled { background: #333; color: #666; cursor: not-allowed; }
+  .save-bc-btn.saving { background: #1a2e1a; color: #81c784; }
+  .save-bc-btn.saved  { background: #1a2e1a; color: #81c784; }
+  .discard-btn {
+    background: transparent;
+    color: #555;
+    border: 1px solid #333;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1px;
+    padding: 6px 12px;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  .discard-btn:hover { color: #999; border-color: #555; }
+
+  /* EDIT MODAL for probability */
+  .prob-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 400;
+    align-items: center;
+    justify-content: center;
+  }
+  .prob-modal.open { display: flex; }
+  .prob-modal-box {
+    background: var(--black);
+    border: 1px solid var(--gold);
+    border-radius: 6px;
+    padding: 24px 28px;
+    min-width: 320px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+  }
+  .prob-modal-title {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 6px;
+  }
+  .prob-modal-project {
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--white);
+    margin-bottom: 16px;
+  }
+  .prob-slider-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .prob-slider {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 4px;
+    border-radius: 2px;
+    background: #333;
+    outline: none;
+  }
+  .prob-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--gold);
+    cursor: pointer;
+  }
+  .prob-display {
+    font-family: var(--display);
+    font-size: 32px;
+    color: var(--gold-light);
+    min-width: 60px;
+    text-align: right;
+    line-height: 1;
+  }
+  .prob-presets {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .prob-preset {
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 3px;
+    cursor: pointer;
+    border: 1px solid #333;
+    color: #666;
+    transition: all 0.15s;
+  }
+  .prob-preset:hover { border-color: var(--gold); color: var(--gold); }
+  .prob-modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+  .prob-confirm-btn {
+    background: var(--gold); color: var(--black);
+    border: none; font-family: var(--mono); font-size: 10px;
+    font-weight: 600; letter-spacing: 1px; padding: 8px 18px;
+    border-radius: 3px; cursor: pointer;
+  }
+  .prob-cancel-btn {
+    background: transparent; color: #555;
+    border: 1px solid #333; font-family: var(--mono);
+    font-size: 10px; letter-spacing: 1px; padding: 7px 14px;
+    border-radius: 3px; cursor: pointer;
+  }
+
+
+  /* CLOSE/ARCHIVE BUTTON — inline next to BC number */
+  .c-num-wrap {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+  }
+  .archive-btn-inline {
+    background: transparent;
+    border: 1px solid transparent;
+    color: #ccc;
+    font-size: 9px;
+    font-weight: 600;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    padding: 0;
+    line-height: 1;
+    opacity: 0;
+  }
+  tr:hover .archive-btn-inline {
+    opacity: 1;
+  }
+  .archive-btn-inline:hover {
+    background: #fce4ec;
+    border-color: #c62828;
+    color: #c62828;
+    opacity: 1;
+  }
+
+  /* ARCHIVE MODAL */
+  .archive-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 500;
+    align-items: center;
+    justify-content: center;
+  }
+  .archive-modal.open { display: flex; }
+  .archive-modal-box {
+    background: var(--black);
+    border: 1px solid #c62828;
+    border-radius: 6px;
+    padding: 28px 32px;
+    min-width: 360px;
+    max-width: 480px;
+    box-shadow: 0 4px 32px rgba(0,0,0,0.6);
+  }
+  .archive-modal-warning {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #c62828;
+    margin-bottom: 8px;
+  }
+  .archive-modal-title {
+    font-family: var(--display);
+    font-size: 22px;
+    color: var(--white);
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+    line-height: 1.2;
+  }
+  .archive-modal-num {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: #555;
+    margin-bottom: 20px;
+  }
+  .archive-modal-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: #666;
+    margin-bottom: 8px;
+  }
+  .archive-reason-select {
+    width: 100%;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    color: var(--white);
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 9px 12px;
+    border-radius: 3px;
+    outline: none;
+    margin-bottom: 20px;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+  }
+  .archive-reason-select:focus { border-color: #c62828; }
+  .archive-reason-select option { background: #1a1a1a; }
+  .archive-modal-note {
+    font-size: 11px;
+    color: #444;
+    margin-bottom: 20px;
+    line-height: 1.5;
+    font-style: italic;
+  }
+  .archive-modal-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+  .archive-confirm-btn {
+    background: #c62828;
+    color: #fff;
+    border: none;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 9px 18px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .archive-confirm-btn:hover { background: #b71c1c; }
+  .archive-confirm-btn:disabled { background: #333; color: #666; cursor: not-allowed; }
+  .archive-cancel-btn {
+    background: transparent;
+    color: #555;
+    border: 1px solid #333;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+    padding: 8px 14px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .archive-cancel-btn:hover { color: #999; border-color: #555; }
+
+  /* ARCHIVE ROW ANIMATION */
+  .archiving {
+    animation: fadeArchive 0.6s ease forwards;
+  }
+  @keyframes fadeArchive {
+    0%   { opacity: 1; transform: translateX(0); }
+    50%  { opacity: 0.3; transform: translateX(20px); background: #fce4ec; }
+    100% { opacity: 0; transform: translateX(40px); height: 0; padding: 0; }
+  }
+
+  /* ARCHIVED COUNT BADGE */
+  .archived-badge {
+    display: none;
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: #2a0a0a;
+    border: 1px solid #6a1a1a;
+    color: #ef9a9a;
+    letter-spacing: 0.5px;
+    margin-left: 8px;
+  }
+  .archived-badge.visible { display: inline-flex; align-items: center; gap: 4px; }
+
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="tb-logo">HARRIS <span>PIPELINE</span></div>
+  <div class="tb-date">MAY 19, 2026 &nbsp;·&nbsp; LIVE FROM BUILDINGCONNECTED</div>
+  <div class="tb-live">● LIVE BC DATA</div>
+  <div class="archived-badge" id="archivedBadge"></div>
+  <div class="tb-pills">
+    <div class="tb-pill" style="background:#1a1a2e;color:#7ec8e3;">32 OPP</div>
+    <div class="tb-pill" style="background:#1a2e1a;color:#81c784;">3 OC</div>
+    <div class="tb-pill" style="background:#2e1a00;color:#e8b820;">14 BGT</div>
+    <div class="tb-pill" style="background:#2e0a0a;color:#ef9a9a;">4 BID</div>
+    <div class="tb-pill" style="background:#1a1400;color:var(--gold);border:1px solid #3a2e00;">54 TOTAL</div>
+  </div>
+</div>
+
+
+<div class="dashboard">
+  <!-- ROW 1: Pipeline totals -->
+  <div class="dash-section">
+    <div class="dash-section-label">Pipeline Overview</div>
+    <div class="dash-cards">
+      <div class="dash-card dash-card-gold">
+        <div class="dash-card-value">54</div>
+        <div class="dash-card-label">Total Active Projects</div>
+      </div>
+      <div class="dash-card">
+        <div class="dash-card-value">.4M</div>
+        <div class="dash-card-label">Est. Value Entered</div>
+        <div class="dash-card-sub">50 projects TBD</div>
+      </div>
+      <div class="dash-card">
+        <div class="dash-card-value">62K</div>
+        <div class="dash-card-label">Weighted TTH</div>
+        <div class="dash-card-sub">Understated — values TBD</div>
+      </div>
+      <div class="dash-card dash-card-alert">
+        <div class="dash-card-value">4</div>
+        <div class="dash-card-label">Needs Attention</div>
+        <div class="dash-card-sub">See alerts below</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DIVIDER -->
+  <div class="dash-divider"></div>
+
+  <!-- ROW 2: Phase breakdown -->
+  <div class="dash-section">
+    <div class="dash-section-label">By Phase</div>
+    <div class="dash-cards">
+      <div class="dash-card dash-phase" style="border-top:3px solid #7ec8e3">
+        <div class="dash-card-value" style="color:#7ec8e3">32</div>
+        <div class="dash-card-label">OPP</div>
+        <div class="dash-card-sub">Opportunity</div>
+      </div>
+      <div class="dash-card dash-phase" style="border-top:3px solid #81c784">
+        <div class="dash-card-value" style="color:#81c784">3</div>
+        <div class="dash-card-label">OC</div>
+        <div class="dash-card-sub">Opinion of Cost</div>
+      </div>
+      <div class="dash-card dash-phase" style="border-top:3px solid #e8b820">
+        <div class="dash-card-value" style="color:#e8b820">14</div>
+        <div class="dash-card-label">BGT</div>
+        <div class="dash-card-sub">Budgeting / ROM</div>
+      </div>
+      <div class="dash-card dash-phase" style="border-top:3px solid #ef9a9a">
+        <div class="dash-card-value" style="color:#ef9a9a">4</div>
+        <div class="dash-card-label">BID</div>
+        <div class="dash-card-sub">Active Bid</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DIVIDER -->
+  <div class="dash-divider"></div>
+
+  <!-- ROW 3: Estimator workload -->
+  <div class="dash-section">
+    <div class="dash-section-label">Estimator Workload</div>
+    <div class="dash-cards">
+      <div class="dash-card dash-est">
+        <div class="dash-est-avatar ep-jeff-bg">JC</div>
+        <div class="dash-est-info">
+          <div class="dash-est-name">Jeff Contenta</div>
+          <div class="dash-est-role">VP Preconstruction</div>
+        </div>
+        <div class="dash-est-count ep-jeff-color">26</div>
+        <div class="dash-est-bar"><div class="dash-est-fill ep-jeff-fill" style="width:52%"></div></div>
+      </div>
+      <div class="dash-card dash-est">
+        <div class="dash-est-avatar ep-joshua-bg">JH</div>
+        <div class="dash-est-info">
+          <div class="dash-est-name">Joshua</div>
+          <div class="dash-est-role">Senior Estimator</div>
+        </div>
+        <div class="dash-est-count ep-joshua-color">15</div>
+        <div class="dash-est-bar"><div class="dash-est-fill ep-joshua-fill" style="width:28%"></div></div>
+      </div>
+      <div class="dash-card dash-est">
+        <div class="dash-est-avatar ep-austin-bg">AE</div>
+        <div class="dash-est-info">
+          <div class="dash-est-name">Austin</div>
+          <div class="dash-est-role">Estimator</div>
+        </div>
+        <div class="dash-est-count ep-austin-color">18</div>
+        <div class="dash-est-bar"><div class="dash-est-fill ep-austin-fill" style="width:33%"></div></div>
+      </div>
+      <div class="dash-card dash-est">
+        <div class="dash-est-avatar" style="background:#0a2e2e;color:#80cbc4">BC</div>
+        <div class="dash-est-info">
+          <div class="dash-est-name">Bryan</div>
+          <div class="dash-est-role">Principal / Partner</div>
+        </div>
+        <div class="dash-est-count" style="color:#80cbc4">5</div>
+        <div class="dash-est-bar"><div class="dash-est-fill" style="width:6%;background:#80cbc4"></div></div>
+      </div>
+      <div class="dash-card dash-est-total">
+        <div class="dash-est-total-label">Active<br>Team Members</div>
+        <div class="dash-est-total-val">4<span>people</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="tth-banner">
+  <div class="tth-item">
+    <span class="tth-val">$162,628</span>
+    <span class="tth-lbl">Total Weighted TTH</span>
+  </div>
+  <div class="tth-item">
+    <span class="tth-val">$105,878</span>
+    <span class="tth-lbl">BID Phase TTH</span>
+  </div>
+  <div class="tth-item">
+    <span class="tth-val">$55,000</span>
+    <span class="tth-lbl">OC Phase TTH</span>
+  </div>
+  <div class="tth-item">
+    <span class="tth-val">$1,750</span>
+    <span class="tth-lbl">BGT Phase TTH</span>
+  </div>
+  <span class="tth-note">⚠ TTH understated — most projects missing values in BC.<br>Add estimated values to unlock full forecast.</span>
+</div>
+
+<div class="alerts">
+  <span class="alerts-lbl">⚠ Attention</span>
+  <div class="alert alert-red">🔴 Yaamava' Cigar Lounge — BID DUE TODAY May 19</div>
+  <div class="alert alert-red">🔴 The Cliffs — Bid date passed Apr 24. Status?</div>
+  <div class="alert alert-amber">🟡 WeWork Amazon OC — Due date passed. Proposal delivered?</div>
+  <div class="alert alert-amber">🟡 Probabilities AI-suggested — confirm and update in BC Notes using [PROB: XX%]</div>
+</div>
+
+<div class="wrapper">
+
+  <div class="phase-group" id="g-opp">
+    <div class="phase-bar" style="background:#1a1a2e;color:#fff" onclick="tog('g-opp')">
+      <span class="ph-code" style="color:#7ec8e3">OPP</span>
+      <span class="ph-name">Opportunity / Lead Tracking</span>
+      <span class="ph-stats">
+        <span>32 projects</span>
+        <span>values TBD</span>
+        
+      </span>
+      <span class="ph-arrow">▾</span>
+    </div>
+    <div class="phase-body">
+      <table>
+        <thead><tr>
+          <th class="col-num">BC Number</th>
+          <th class="col-name">Project Name</th>
+          <th class="col-val">Est. Value</th>
+          <th class="col-loc">Location</th>
+          <th class="col-date">Follow-Up Date</th>
+          <th class="col-est">Estimator</th>
+          <th class="col-prob">Probability</th>
+          <th class="col-tth">TTH</th>
+          <th class="col-notes">Notes</th>
+        </tr></thead>
+        <tbody>
+          <tr class="opp-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0045-LV-OPP</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0045-LV-OPP', 'Luna @ Pod 2', '69fe1b31a3de1f7527be739d')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/69fe1b31a3de1f7527be739d" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">Luna @ Pod 2<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value missing">—</div></td>
+            <td><div class="c-location missing">—</div></td>
+            <td><div class="bid-date bd-na">N/A</div></td>
+            <td><div class="est-wrap"><span class="est-pill ep-jeff">Jeff</span></div></td>
+            <td><div class="prob-badge prob-low">20%<div class="prob-bar"><div class="prob-fill" style="width:20%"></div></div></div></td>
+            <td><div class="tth-tbd">TBD</div></td>
+            <td><div class="c-notes missing">—</div></td>
+          </tr>
+          </tr>
+          <tr class="opp-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0044-LV-OPP</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0044-LV-OPP', '4 Seasons Wolfgang Puck', '69fe1aed41457087b07fda7e')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/69fe1aed41457087b07fda7e" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">4 Seasons Wolfgang Puck<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value missing">—</div></td>
+            <td><div class="c-location missing">—</div></td>
+            <td><div class="bid-date bd-na">N/A</div></td>
+            <td><div class="est-wrap"><span class="est-pill ep-jeff">Jeff</span></div></td>
+            <td><div class="prob-badge prob-low">20%<div class="prob-bar"><div class="prob-fill" style="width:20%"></div></div></div></td>
+            <td><div class="tth-tbd">TBD</div></td>
+            <td><div class="c-notes missing">—</div></td>
+          </tr>
+          </tr>
+          <tr class="opp-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0043-LV-OPP</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0043-LV-OPP', 'Switch 19', '69fe1a7925d84f8f5bed119a')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/69fe1a7925d84f8f5bed119a" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">Switch 19<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value missing">—</div></td>
+            <td><div class="c-location missing">—</div></td>
+            <td><div class="bid-date bd-na">N/A</div></td>
+            <td><div class="est-wrap"><span class="est-pill ep-jeff">Jeff</span></div></td>
+            <td><div class="prob-badge prob-low">20%<div class="prob-bar"><div class="prob-fill" style="width:20%"></div></div></div></td>
+            <td><div class="tth-tbd">TBD</div></td>
+            <td><div class="c-notes missing">—</div></td>
+          </tr>
+          </tr>
+          <tr class="opp-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0040-LV-OPP</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0040-LV-OPP', 'Players Club El Cortez', '69fd0e3b5db92dd391a5ae44')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/69fd0e3b5db92dd391a5ae44" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">Players Club El Cortez<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value missing">—</div></td>
+            <td><div class="c-location missing">—</div></td>
+            <td><div class="bid-date bd-na">N/A</div></td>
+            <td><div class="est-wrap"><span class="est-pill ep-jeff">Jeff</span></div></td>
+            <td><div class="prob-badge prob-low">20%<div class="prob-bar"><div class="prob-fill" style="width:20%"></div></div></div></td>
+            <td><div class="tth-tbd">TBD</div></td>
+            <td><div class="c-notes missing">—</div></td>
+          </tr>
+          </tr>
+          <tr class="opp-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0039-LV-OPP</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0039-LV-OPP', 'Club House Summerlin', '69fd0d261f0845809b887ef7')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/69fd0d261f0845809b887ef7" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">Club House Summerlin<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value missing">—</div></td>
+            <td><div class="c-location missing">—</div></td>
+            <td><div class="bid-date bd-na">N/A</div></td>
+            <td><div class="est-wrap"><span class="est-pill ep-jeff">Jeff</span></div></td>
+            <td><div class="prob-badge prob-low">20%<div class="prob-bar"><div class="prob-fill" style="width:20%"></div></div></div></td>
+            <td><div class="tth-tbd">TBD</div></td>
+            <td><div class="c-notes missing">—</div></td>
+          </tr>
+          </tr>
+          <tr class="opp-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0038-LV-OPP</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0038-LV-OPP', 'Faith Lutheran Summerlin', '69fd0cdc87608a719544388c')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/69fd0cdc87608a719544388c" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">Faith Lutheran Summerlin<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value missing">—</div></td>
+            <td><div class="c-location missing">—</div></td>
+            <td><div class="bid-date bd-na">N/A</div></td>
+            <td><div class="est-wrap"><span class="est-pill ep-jeff">Jeff</span></div></td>
+            <td><div class="prob-badge prob-low">20%<div class="prob-bar"><div class="prob-fill" style="width:20%"></div></div></div></td>
+            <td><div class="tth-tbd">TBD</div></td>
+            <td><div class="c-notes missing">—</div></td>
+          </tr>
+          </tr>
+          <tr class="opp-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0037-LV-OPP</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0037-LV-OPP', 'Dicks Sporting Goods DTS', '69fd0c8da361b919ea9dee94')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/69fd0c8da361b919ea9dee94" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">Dicks Sporting Goods DTS<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value missing">—</div></td>
+            <td><div class="c-location missing">—</div></td>
+            <td><div class="bid-date bd-na">N/A</div></td>
+            <td><div class="est-wrap"><span class="est-pill ep-jeff">Jeff</span></div></td>
+            <td><div class="prob-badge prob-low">20%<div class="prob-bar"><div class="prob-fill" style="width:20%"></div></div></div></td>
+            <td><div class="tth-tbd">TBD</div></td>
+            <td><div class="c-notes missing">—</div></td>
+          </tr>
+          </tr>
+          <tr class="opp-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0036-LV-OPP</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0036-LV-OPP', 'Town Square - Culinary Drop Out', '69fcdbf496c5fbfb31bb0948')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/69fcdbf496c5fbfb31bb0948" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">Town Square - Culinary Drop Out<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value missing">—</div></td>
+            <td><div class="c-location missing">—</div></td>
+            <td><div class="bid-date bd-na">N/A</div></td>
+            <td><div class="est-wrap"><span class="est-pill ep-austin">Austin</span></div></td>
+            <td><div class="prob-badge prob-low">20%<div class="prob-bar"><div class="prob-fill" style="width:20%"></div></div></div></td>
+            <td><div class="tth-tbd">TBD</div></td>
+            <td><div class="c-notes missing">—</div></td>
+          </tr>
+          </tr>
+          <tr class="opp-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0035-LV-OPP</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0035-LV-OPP', 'Town Square - CPK Demo', '69fcdbd1f9b6b232c1e188a5')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/69fcdbd1f9b6b232c1e188a5" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">Town Square - CPK Demo<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value missing">—</div></td>
+            <td><div class="c-location missing">—</div></td>
+            <td><div class="bid-date bd-na">N/A</div></td>
+            <td><div class="est-wrap"><span class="est-pill ep-austin">Austin</span></div></td>
+            <td><div class="prob-badge prob-low">20%<div class="prob-bar"><div class="prob-fill" style="width:20%"></div></div></div></td>
+            <td><div class="tth-tbd">TBD</div></td>
+            <td><div class="c-notes missing">—</div></td>
+          </tr>
+          </tr>
+          <tr class="opp-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0034-LV-OPP</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0034-LV-OPP', 'Town Square - Brio Demo', '69fcdbaafaa3d91d160a5ea2')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/69fcdbaafaa3d91d160a5ea2" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">Town Square - Brio Demo<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value missing">—</div></td>
+            <td><div class="c-location missing">—</div></td>
+            <td><div class="bid-date bd-na">N/A</div></td>
+            <td><div class="est-wrap"><span class="est-pill ep-austin">Austin</span></div></td>
+            <td><div class="prob-badge prob-low">20%<div class="prob-bar"><div class="prob-fill" style="width:20%"></div></div></div></td>
+            <td><div class="tth-tbd">TBD</div></td>
+            <td><div class="c-notes missing">—</div></td>
+          </tr>
+          </tr>
+          <tr class="opp-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0024-LV-OPP</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0024-LV-OPP', 'Ridgecrest Hotel', '69fcd96b58ed3861794dc0d9')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/69fcd96b58ed3861794dc0d9" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">Ridgecrest Hotel<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value missing">—</div></td>
+            <td><div class="c-location missing">—</div></td>
+            <td><div class="bid-date bd-na">N/A</div></td>
+            <td><div class="est-wrap"><span class="est-pill ep-joshua">Joshua</span></div></td>
+            <td><div class="prob-badge prob-low">15%<div class="prob-bar"><div class="prob-fill" style="width:15%"></div></div></div></td>
+            <td><div class="tth-tbd">TBD</div></td>
+            <td><div class="c-notes missing">—</div></td>
+          </tr>
+          </tr>
+          <tr class="opp-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0021-LV-OPP</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0021-LV-OPP', 'Game Place Project\'s', '69fcd8baa45d3b47c692f5de')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/69fcd8baa45d3b47c692f5de" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">Game Place Project's<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value missing">—</div></td>
+            <td><div class="c-location missing">—</div></td>
+            <td><div class="bid-date bd-na">N/A</div></td>
+            <td><div class="est-wrap"><span class="est-pill ep-joshua">Joshua</span></div></td>
+            <td><div class="prob-badge prob-low">15%<div class="prob-bar"><div class="prob-fill" style="width:15%"></div></div></div></td>
+            <td><div class="tth-tbd">TBD</div></td>
+            <td><div class="c-notes missing">—</div></td>
+          </tr>
+          </tr>
+          <tr class="opp-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0020-LV-OPP</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0020-LV-OPP', 'Fire Station', '69fcd885016e2e21e3fb006f')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/69fcd885016e2e21e3fb006f" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">Fire Station<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value missing">—</div></td>
+            <td><div class="c-location missing">—</div></td>
+            <td><div class="bid-date bd-na">N/A</div></td>
+            <td><div class="est-wrap"><span class="est-pill ep-bryan">Bryan</span></div></td>
+            <td><div class="prob-badge prob-low">15%<div class="prob-bar"><div class="prob-fill" style="width:15%"></div></div></div></td>
+            <td><div class="tth-tbd">TBD</div></td>
+            <td><div class="c-notes missing">—</div></td>
+          </tr>
+          </tr>
+          <tr class="opp-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0019-LV-OPP</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0019-LV-OPP', 'Decatur Desert Plaza - Pad TIs', '69fcd71ba7706fdeb2d804d4')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/69fcd71ba7706fdeb2d804d4" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">Decatur Desert Plaza - Pad TIs<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value missing">—</div></td>
+            <td><div class="c-location missing">—</div></td>
+            <td><div class="bid-date bd-na">N/A</div></td>
+            <td><div class="est-wrap"><span class="est-pill ep-joshua">Joshua</span></div></td>
+            <td><div class="prob-badge prob-low">25%<div class="prob-bar"><div class="prob-fill" style="width:25%"></div></div></div></td>
+            <td><div class="tth-tbd">TBD</div></td>
+            <td><div class="c-notes missing">—</div></td>
+          </tr>
+          </tr>
+          <tr class="opp-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0018-LV-OPP</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0018-LV-OPP', 'Cooper Hawk - DTS', '69fcd67d53025c3f72f7c9c6')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/69fcd67d53025c3f72f7c9c6" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">Cooper Hawk - DTS<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value missing">—</div></td>
+            <td><div class="c-location missing">—</div></td>
+            <td><div class="bid-date bd-na">N/A</div></td>
+            <td><div class="est-wrap"><span class="est-pill ep-bryan">Bryan</span></div></td>
+            <td><div class="prob-badge prob-low">25%<div class="prob-bar"><div class="prob-fill" style="width:25%"></div></div></div></td>
+            <td><div class="tth-tbd">TBD</div></td>
+            <td><div class="c-notes missing">—</div></td>
+          </tr>
+          </tr>
+          <tr class="opp-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0017-LV-OPP</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0017-LV-OPP', 'Roof Top Bar and Restaurant', '69fd01d4bc2e2613b5d06749')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/69fd01d4bc2e2613b5d06749" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">Roof Top Bar and Restaurant<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value missing">—</div></td>
+            <td><div class="c-location missing">—</div></td>
+            <td><div class="bid-date bd-na">N/A</div></td>
+            <td><div class="est-wrap"><span class="est-pill ep-jeff">Jeff</span></div></td>
+            <td><div class="prob-badge prob-low">20%<div class="prob-bar"><div class="prob-fill" style="width:20%"></div></div></div></td>
+            <td><div class="tth-tbd">TBD</div></td>
+            <td><div class="c-notes missing">—</div></td>
+          </tr>
+          </tr>
+          <tr class="opp-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0016-LV-OPP</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0016-LV-OPP', 'Yaamava - Palms Las Vegas', '69fd0154de3f0a48410e749e')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/69fd0154de3f0a48410e749e" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">Yaamava - Palms Las Vegas<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value missing">—</div></td>
+            <td><div class="c-location missing">—</div></td>
+            <td><div class="bid-date bd-na">N/A</div></td>
+            <td><div class="est-wrap"><span class="est-pill ep-jeff">Jeff</span></div></td>
+            <td><div class="prob-badge prob-mid">30%<div class="prob-bar"><div class="prob-fill" style="width:30%"></div></div></div></td>
+            <td><div class="tth-tbd">TBD</div></td>
+            <td><div class="c-notes missing">—</div></td>
+          </tr>
+          </tr>
+          <tr class="opp-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0015-LV-OPP</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0015-LV-OPP', 'Volkswagen West', '69fd00af3d87836752e3d8c9')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/69fd00af3d87836752e3d8c9" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">Volkswagen West<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value missing">—</div></td>
+            <td><div class="c-location missing">—</div></td>
+            <td><div class="bid-date bd-na">N/A</div></td>
+            <td><div class="est-wrap"><span class="est-pill ep-jeff">Jeff</span></div></td>
+            <td><div class="prob-badge prob-low">20%<div class="prob-bar"><div class="prob-fill" style="width:20%"></div></div></div></td>
+            <td><div class="tth-tbd">TBD</div></td>
+            <td><div class="c-notes missing">—</div></td>
+          </tr>
+          </tr>
+          <tr class="opp-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0014-LV-OPP</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0014-LV-OPP', 'Top Gun Flight Experience', '69fd0051748582868712d054')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/69fd0051748582868712d054" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">Top Gun Flight Experience<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value missing">—</div></td>
+            <td><div class="c-location missing">—</div></td>
+            <td><div class="bid-date bd-na">N/A</div></td>
+            <td><div class="est-wrap"><span class="est-pill ep-jeff">Jeff</span></div></td>
+            <td><div class="prob-badge prob-low">15%<div class="prob-bar"><div class="prob-fill" style="width:15%"></div></div></div></td>
+            <td><div class="tth-tbd">TBD</div></td>
+            <td><div class="c-notes missing">—</div></td>
+          </tr>
+          </tr>
+          <tr class="opp-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0013-LV-OPP</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0013-LV-OPP', 'State Farm - Office Park', '69fd0023594dcc6c149b5fc1')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/69fd0023594dcc6c149b5fc1" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">State Farm - Office Park<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value missing">—</div></td>
+            <td><div class="c-location missing">—</div></td>
+            <td><div class="bid-date bd-na">N/A</div></td>
+            <td><div class="est-wrap"><span class="est-pill ep-jeff">Jeff</span></div></td>
+            <td><div class="prob-badge prob-low">20%<div class="prob-bar"><div class="prob-fill" style="width:20%"></div></div></div></td>
+            <td><div class="tth-tbd">TBD</div></td>
+            <td><div class="c-notes missing">—</div></td>
+          </tr>
+          </tr>
+          <tr class="opp-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0012-LV-OPP</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0012-LV-OPP', 'Siena Golf Club', '69fcffd6f0aa206e0726edf6')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/69fcffd6f0aa206e0726edf6" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">Siena Golf Club<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value missing">—</div></td>
+            <td><div class="c-location missing">—</div></td>
+            <td><div class="bid-date bd-na">N/A</div></td>
+            <td><div class="est-wrap"><span class="est-pill ep-jeff">Jeff</span></div></td>
+            <td><div class="prob-badge prob-low">25%<div class="prob-bar"><div class="prob-fill" style="width:25%"></div></div></div></td>
+            <td><div class="tth-tbd">TBD</div></td>
+            <td><div class="c-notes missing">—</div></td>
+          </tr>
+          </tr>
+          <tr class="opp-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0011-LV-OPP</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0011-LV-OPP', 'Paiute Golf Resort', '69fcff9a7e05390a0e601568')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/69fcff9a7e05390a0e601568" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">Paiute Golf Resort<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value missing">—</div></td>
+            <td><div class="c-location missing">—</div></td>
+            <td><div class="bid-date bd-na">N/A</div></td>
+            <td><div class="est-wrap"><span class="est-pill ep-jeff">Jeff</span></div></td>
+            <td><div class="prob-badge prob-low">25%<div class="prob-bar"><div class="prob-fill" style="width:25%"></div></div></div></td>
+            <td><div class="tth-tbd">TBD</div></td>
+            <td><div class="c-notes missing">—</div></td>
+          </tr>
+          </tr>
+          <tr class="opp-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0010-LV-OPP</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0010-LV-OPP', 'Howard Hughes Corporate Center', '69fcff2a08a8381ddd8ddf8f')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/69fcff2a08a8381ddd8ddf8f" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">Howard Hughes Corporate Center<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value missing">—</div></td>
+            <td><div class="c-location missing">—</div></td>
+            <td><div class="bid-date bd-na">N/A</div></td>
+            <td><div class="est-wrap"><span class="est-pill ep-jeff">Jeff</span></div></td>
+            <td><div class="prob-badge prob-low">20%<div class="prob-bar"><div class="prob-fill" style="width:20%"></div></div></div></td>
+            <td><div class="tth-tbd">TBD</div></td>
+            <td><div class="c-notes missing">—</div></td>
+          </tr>
+          </tr>
+          <tr class="opp-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0009-LV-OPP</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0009-LV-OPP', 'Gold Spike', '69fcfeddc8afd0aa2cda32e5')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/69fcfeddc8afd0aa2cda32e5" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">Gold Spike<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value missing">—</div></td>
+            <td><div class="c-location missing">—</div></td>
+            <td><div class="bid-date bd-na">N/A</div></td>
+            <td><div class="est-wrap"><span class="est-pill ep-jeff">Jeff</span></div></td>
+            <td><div class="prob-badge prob-low">20%<div class="prob-bar"><div class="prob-fill" style="width:20%"></div></div></div></td>
+            <td><div class="tth-tbd">TBD</div></td>
+            <td><div class="c-notes missing">—</div></td>
+          </tr>
+          </tr>
+          <tr class="opp-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0008-LV-OPP</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0008-LV-OPP', 'Downtown Bar by Main', '69fcfdca0b859b47c5b12692')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/69fcfdca0b859b47c5b12692" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">Downtown Bar by Main<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value missing">—</div></td>
+            <td><div class="c-location missing">—</div></td>
+            <td><div class="bid-date bd-na">N/A</div></td>
+            <td><div class="est-wrap"><span class="est-pill ep-jeff">Jeff</span></div></td>
+            <td><div class="prob-badge prob-low">20%<div class="prob-bar"><div class="prob-fill" style="width:20%"></div></div></div></td>
+            <td><div class="tth-tbd">TBD</div></td>
+            <td><div class="c-notes missing">—</div></td>
+          </tr>
+          </tr>
+          <tr class="opp-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0007-LV-OPP</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0007-LV-OPP', 'Climbing Gym', '69fcfd4b599c6937f72c2882')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/69fcfd4b599c6937f72c2882" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">Climbing Gym<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value missing">—</div></td>
+            <td><div class="c-location missing">—</div></td>
+            <td><div class="bid-date bd-na">N/A</div></td>
+            <td><div class="est-wrap"><span class="est-pill ep-jeff">Jeff</span></div></td>
+            <td><div class="prob-badge prob-low">15%<div class="prob-bar"><div class="prob-fill" style="width:15%"></div></div></div></td>
+            <td><div class="tth-tbd">TBD</div></td>
+            <td><div class="c-notes missing">—</div></td>
+          </tr>
+          </tr>
+          <tr class="opp-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0006-LV-OPP</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0006-LV-OPP', 'Cadillac / Honda West', '69fcfce70a175f83dbd16abb')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/69fcfce70a175f83dbd16abb" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">Cadillac / Honda West<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value missing">—</div></td>
+            <td><div class="c-location missing">—</div></td>
+            <td><div class="bid-date bd-na">N/A</div></td>
+            <td><div class="est-wrap"><span class="est-pill ep-jeff">Jeff</span></div></td>
+            <td><div class="prob-badge prob-low">20%<div class="prob-bar"><div class="prob-fill" style="width:20%"></div></div></div></td>
+            <td><div class="tth-tbd">TBD</div></td>
+            <td><div class="c-notes missing">—</div></td>
+          </tr>
+          </tr>
+          <tr class="opp-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0005-LV-OPP</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0005-LV-OPP', 'Valley View Warehouse', '69fcda3eb86638a37fdb4a9b')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/69fcda3eb86638a37fdb4a9b" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">Valley View Warehouse<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value missing">—</div></td>
+            <td><div class="c-location missing">—</div></td>
+            <td><div class="bid-date bd-na">N/A</div></td>
+            <td><div class="est-wrap"><span class="est-pill ep-austin">Austin</span></div></td>
+            <td><div class="prob-badge prob-low">20%<div class="prob-bar"><div class="prob-fill" style="width:20%"></div></div></div></td>
+            <td><div class="tth-tbd">TBD</div></td>
+            <td><div class="c-notes missing">—</div></td>
+          </tr>
+          </tr>
+          <tr class="opp-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0003-LV-OPP</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0003-LV-OPP', 'Pechanga Casino Hotel', '69fcfbf9bff0df7c2b29edaa')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/69fcfbf9bff0df7c2b29edaa" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">Pechanga Casino Hotel<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value missing">—</div></td>
+            <td><div class="c-location missing">—</div></td>
+            <td><div class="bid-date bd-na">N/A</div></td>
+            <td><div class="est-wrap"><span class="est-pill ep-jeff">Jeff</span></div></td>
+            <td><div class="prob-badge prob-low">25%<div class="prob-bar"><div class="prob-fill" style="width:25%"></div></div></div></td>
+            <td><div class="tth-tbd">TBD</div></td>
+            <td><div class="c-notes missing">—</div></td>
+          </tr>
+          </tr>
+          <tr class="opp-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0002-LV-OPP</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0002-LV-OPP', 'Golden Gaming', '69fcfba1ba04643b1c191941')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/69fcfba1ba04643b1c191941" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">Golden Gaming<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value missing">—</div></td>
+            <td><div class="c-location missing">—</div></td>
+            <td><div class="bid-date bd-na">N/A</div></td>
+            <td><div class="est-wrap"><span class="est-pill ep-jeff">Jeff</span></div></td>
+            <td><div class="prob-badge prob-mid">30%<div class="prob-bar"><div class="prob-fill" style="width:30%"></div></div></div></td>
+            <td><div class="tth-tbd">TBD</div></td>
+            <td><div class="c-notes missing">—</div></td>
+          </tr>
+          </tr>
+          <tr class="opp-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0001-AZ-OPP</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0001-AZ-OPP', 'River Horse Casino', '69fcfafd90397539e45fab19')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/69fcfafd90397539e45fab19" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">River Horse Casino<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value missing">—</div></td>
+            <td><div class="c-location missing">—</div></td>
+            <td><div class="bid-date bd-na">N/A</div></td>
+            <td><div class="est-wrap"><span class="est-pill ep-jeff">Jeff</span></div></td>
+            <td><div class="prob-badge prob-low">20%<div class="prob-bar"><div class="prob-fill" style="width:20%"></div></div></div></td>
+            <td><div class="tth-tbd">TBD</div></td>
+            <td><div class="c-notes missing">—</div></td>
+          </tr>
+          </tr>
+          <tr class="opp-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0053-LV-OPP</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0053-LV-OPP', 'Town Square Building C-1 Demo', '6659fdec9f1b7e016921e495')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/6659fdec9f1b7e016921e495" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">Town Square Building C-1 Demo<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value missing">—</div></td>
+            <td><div class="c-location">Las Vegas, NV</div></td>
+            <td><div class="bid-date bd-over">2024-06-28</div></td>
+            <td><div class="est-wrap"><span class="ep-none">—</span></div></td>
+            <td><div class="prob-badge prob-mid">50%<div class="prob-bar"><div class="prob-fill" style="width:50%"></div></div></div></td>
+            <td><div class="tth-tbd">TBD</div></td>
+            <td><div class="c-notes">Demolition of previously vacated tenant space.</div></td>
+          </tr>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="phase-group" id="g-oc">
+    <div class="phase-bar" style="background:#1a2e1a;color:#fff" onclick="tog('g-oc')">
+      <span class="ph-code" style="color:#81c784">OC</span>
+      <span class="ph-name">Opinion of Cost</span>
+      <span class="ph-stats">
+        <span>3 projects</span>
+        <span>$1.0M entered</span>
+        <span style="color:#81c784;font-weight:600">$55,000 TTH</span>
+      </span>
+      <span class="ph-arrow">▾</span>
+    </div>
+    <div class="phase-body">
+      <table>
+        <thead><tr>
+          <th class="col-num">BC Number</th>
+          <th class="col-name">Project Name</th>
+          <th class="col-val">Est. Value</th>
+          <th class="col-loc">Location</th>
+          <th class="col-date">Bid / Due Date</th>
+          <th class="col-est">Estimator</th>
+          <th class="col-prob">Probability</th>
+          <th class="col-tth">TTH</th>
+          <th class="col-notes">Notes</th>
+          
+        </tr></thead>
+        <tbody>
+          <tr class="oc-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0059-LV-OC</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0059-LV-OC', 'WeWork - Amazon Town Square OC', '69e786bc92d39e41f111a4f4')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/69e786bc92d39e41f111a4f4" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">WeWork - Amazon Town Square OC<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value">$1.0M</div></td>
+            <td><div class="c-location">Las Vegas, NV</div></td>
+            <td><div class="bid-date bd-over">2026-04-24</div></td>
+            <td><div class="est-wrap"><span class="est-pill ep-jeff">Jeff</span><span class="est-pill ep-joshua">Joshua</span><span class="est-pill ep-austin">Austin</span></div></td>
+            <td><div class="prob-badge prob-mid">55%<div class="prob-bar"><div class="prob-fill" style="width:55%"></div></div></div></td>
+            <td><div class="c-tth">$55,000</div></td>
+            <td><div class="c-notes">TI for Amazon at WeWork Town Square. Due date passed — confirm OC delivered.</div></td>
+          </tr>
+          </tr>
+          <tr class="oc-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0042-LV-OC</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0042-LV-OC', 'Majestic Phase 1', '69fe1a39c44d2f2b3283a883')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/69fe1a39c44d2f2b3283a883" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">Majestic Phase 1<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value missing">—</div></td>
+            <td><div class="c-location missing">—</div></td>
+            <td><div class="bid-date bd-none">—</div></td>
+            <td><div class="est-wrap"><span class="est-pill ep-jeff">Jeff</span></div></td>
+            <td><div class="prob-badge prob-mid">40%<div class="prob-bar"><div class="prob-fill" style="width:40%"></div></div></div></td>
+            <td><div class="c-tth tth-missing">—</div></td>
+            <td><div class="c-notes missing">—</div></td>
+          </tr>
+          </tr>
+          <tr class="oc-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0023-LV-OC</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0023-LV-OC', 'The Resort Summerlin', '69fcd92dab7f56886163efbb')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/69fcd92dab7f56886163efbb" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">The Resort Summerlin<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value missing">—</div></td>
+            <td><div class="c-location missing">—</div></td>
+            <td><div class="bid-date bd-none">—</div></td>
+            <td><div class="est-wrap"><span class="est-pill ep-joshua">Joshua</span></div></td>
+            <td><div class="prob-badge prob-mid">40%<div class="prob-bar"><div class="prob-fill" style="width:40%"></div></div></div></td>
+            <td><div class="c-tth tth-missing">—</div></td>
+            <td><div class="c-notes missing">—</div></td>
+          </tr>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="phase-group" id="g-bgt">
+    <div class="phase-bar" style="background:#2e1a00;color:#fff" onclick="tog('g-bgt')">
+      <span class="ph-code" style="color:#e8b820">BGT</span>
+      <span class="ph-name">Budgeting / ROM / Estimate</span>
+      <span class="ph-stats">
+        <span>14 projects</span>
+        <span>$25,000 entered</span>
+        <span style="color:#e8b820;font-weight:600">$1,750 TTH</span>
+      </span>
+      <span class="ph-arrow">▾</span>
+    </div>
+    <div class="phase-body">
+      <table>
+        <thead><tr>
+          <th class="col-num">BC Number</th>
+          <th class="col-name">Project Name</th>
+          <th class="col-val">Est. Value</th>
+          <th class="col-loc">Location</th>
+          <th class="col-date">Bid / Due Date</th>
+          <th class="col-est">Estimator</th>
+          <th class="col-prob">Probability</th>
+          <th class="col-tth">TTH</th>
+          <th class="col-notes">Notes</th>
+          
+        </tr></thead>
+        <tbody>
+          <tr class="bgt-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0046-LV-BGT</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0046-LV-BGT', 'Desert Cab', '')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/69fe1b70cbf4a02771a702be" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">Desert Cab<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value missing">—</div></td>
+            <td><div class="c-location missing">—</div></td>
+            <td><div class="bid-date bd-none">—</div></td>
+            <td><div class="est-wrap"><span class="est-pill ep-austin">Austin</span></div></td>
+            <td><div class="prob-badge prob-mid">50%<div class="prob-bar"><div class="prob-fill" style="width:50%"></div></div></div></td>
+            <td><div class="c-tth tth-missing">—</div></td>
+            <td><div class="c-notes missing">—</div></td>
+          </tr>
+          </tr>
+          <tr class="bgt-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0033-LV-BGT</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0033-LV-BGT', 'Staccato Prairie Fire — Phase 3', '69fcdb133169532cf1c98ee6')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/69fcdb133169532cf1c98ee6" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">Staccato Prairie Fire — Phase 3<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value missing">—</div></td>
+            <td><div class="c-location missing">—</div></td>
+            <td><div class="bid-date bd-none">—</div></td>
+            <td><div class="est-wrap"><span class="est-pill ep-austin">Austin</span></div></td>
+            <td><div class="prob-badge prob-mid">55%<div class="prob-bar"><div class="prob-fill" style="width:55%"></div></div></div></td>
+            <td><div class="c-tth tth-missing">—</div></td>
+            <td><div class="c-notes missing">—</div></td>
+          </tr>
+          </tr>
+          <tr class="bgt-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0032-LV-BGT</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0032-LV-BGT', 'Staccato Prairie Fire — Phase 2', '69fcdaeaa8a1c54f24e4d5d4')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/69fcdaeaa8a1c54f24e4d5d4" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">Staccato Prairie Fire — Phase 2<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value missing">—</div></td>
+            <td><div class="c-location missing">—</div></td>
+            <td><div class="bid-date bd-none">—</div></td>
+            <td><div class="est-wrap"><span class="est-pill ep-austin">Austin</span></div></td>
+            <td><div class="prob-badge prob-mid">55%<div class="prob-bar"><div class="prob-fill" style="width:55%"></div></div></div></td>
+            <td><div class="c-tth tth-missing">—</div></td>
+            <td><div class="c-notes missing">—</div></td>
+          </tr>
+          </tr>
+          <tr class="bgt-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0031-LV-BGT</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0031-LV-BGT', 'Staccato Prairie Fire — Phase 1', '69fcdac13c6e315459062df3')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/69fcdac13c6e315459062df3" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">Staccato Prairie Fire — Phase 1<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value missing">—</div></td>
+            <td><div class="c-location missing">—</div></td>
+            <td><div class="bid-date bd-none">—</div></td>
+            <td><div class="est-wrap"><span class="est-pill ep-austin">Austin</span></div></td>
+            <td><div class="prob-badge prob-mid">55%<div class="prob-bar"><div class="prob-fill" style="width:55%"></div></div></div></td>
+            <td><div class="c-tth tth-missing">—</div></td>
+            <td><div class="c-notes missing">—</div></td>
+          </tr>
+          </tr>
+          <tr class="bgt-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0029-LV-BGT</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0029-LV-BGT', 'Walk Church 2nd Round', '69e15545bcc88112913cff58')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/69e15545bcc88112913cff58" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">Walk Church 2nd Round<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value missing">—</div></td>
+            <td><div class="c-location missing">—</div></td>
+            <td><div class="bid-date bd-over">2026-04-29</div></td>
+            <td><div class="est-wrap"><span class="est-pill ep-joshua">Joshua</span></div></td>
+            <td><div class="prob-badge prob-mid">50%<div class="prob-bar"><div class="prob-fill" style="width:50%"></div></div></div></td>
+            <td><div class="c-tth tth-missing">—</div></td>
+            <td><div class="c-notes">2nd round pricing. Due date passed — update BC.</div></td>
+          </tr>
+          </tr>
+          <tr class="bgt-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0058-LV-BGT</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0058-LV-BGT', 'H&amp;C Distillery Re-Pricing', '699ce874567ce2abb5922e09')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/699ce874567ce2abb5922e09" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">H&amp;C Distillery Re-Pricing<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value missing">—</div></td>
+            <td><div class="c-location">Las Vegas, NV</div></td>
+            <td><div class="bid-date bd-over">2026-03-06</div></td>
+            <td><div class="est-wrap"><span class="ep-none">—</span></div></td>
+            <td><div class="prob-badge prob-mid">30%<div class="prob-bar"><div class="prob-fill" style="width:30%"></div></div></div></td>
+            <td><div class="c-tth tth-missing">—</div></td>
+            <td><div class="c-notes">Project on hold over a year. Confirm status with client.</div></td>
+          </tr>
+          </tr>
+          <tr class="bgt-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0056-LV-BGT</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0056-LV-BGT', 'Treasure Island — El Corazon CDs', '698ca1226dbb3048066859fe')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/698ca1226dbb3048066859fe" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">Treasure Island — El Corazon CDs<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value missing">—</div></td>
+            <td><div class="c-location missing">—</div></td>
+            <td><div class="bid-date bd-over">2026-03-05</div></td>
+            <td><div class="est-wrap"><span class="est-pill ep-austin">Austin</span><span class="est-pill ep-joshua">Joshua</span></div></td>
+            <td><div class="prob-badge prob-high">60%<div class="prob-bar"><div class="prob-fill" style="width:60%"></div></div></div></td>
+            <td><div class="c-tth tth-missing">—</div></td>
+            <td><div class="c-notes missing">—</div></td>
+          </tr>
+          </tr>
+          <tr class="bgt-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0026-LV-BGT</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0026-LV-BGT', 'Boot Barn at BLVD', '69fcd98cf31ffce88a8cbd86')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/69fcd98cf31ffce88a8cbd86" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">Boot Barn at BLVD<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value missing">—</div></td>
+            <td><div class="c-location missing">—</div></td>
+            <td><div class="bid-date bd-none">—</div></td>
+            <td><div class="est-wrap"><span class="est-pill ep-joshua">Joshua</span></div></td>
+            <td><div class="prob-badge prob-mid">50%<div class="prob-bar"><div class="prob-fill" style="width:50%"></div></div></div></td>
+            <td><div class="c-tth tth-missing">—</div></td>
+            <td><div class="c-notes missing">—</div></td>
+          </tr>
+          </tr>
+          <tr class="bgt-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0022-LV-BGT</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0022-LV-BGT', 'H&amp;C Distillery', '69fcd8de0d226a4646060ffc')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/69fcd8de0d226a4646060ffc" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">H&amp;C Distillery<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value missing">—</div></td>
+            <td><div class="c-location missing">—</div></td>
+            <td><div class="bid-date bd-none">—</div></td>
+            <td><div class="est-wrap"><span class="est-pill ep-joshua">Joshua</span></div></td>
+            <td><div class="prob-badge prob-mid">45%<div class="prob-bar"><div class="prob-fill" style="width:45%"></div></div></div></td>
+            <td><div class="c-tth tth-missing">—</div></td>
+            <td><div class="c-notes missing">—</div></td>
+          </tr>
+          </tr>
+          <tr class="bgt-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0055-LV-BGT</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0055-LV-BGT', 'Treasure Island — El Corazon', '691219a0603e8a24199ccf39')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/691219a0603e8a24199ccf39" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">Treasure Island — El Corazon<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value missing">—</div></td>
+            <td><div class="c-location missing">—</div></td>
+            <td><div class="bid-date bd-over">2026-01-22</div></td>
+            <td><div class="est-wrap"><span class="est-pill ep-austin">Austin</span><span class="est-pill ep-joshua">Joshua</span></div></td>
+            <td><div class="prob-badge prob-high">60%<div class="prob-bar"><div class="prob-fill" style="width:60%"></div></div></div></td>
+            <td><div class="c-tth tth-missing">—</div></td>
+            <td><div class="c-notes missing">—</div></td>
+          </tr>
+          </tr>
+          <tr class="bgt-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0054-LV-BGT</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0054-LV-BGT', 'Treasure Island — Burgers', '690916b59676953176a7e560')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/690916b59676953176a7e560" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">Treasure Island — Burgers<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value missing">—</div></td>
+            <td><div class="c-location missing">—</div></td>
+            <td><div class="bid-date bd-over">2026-01-15</div></td>
+            <td><div class="est-wrap"><span class="est-pill ep-austin">Austin</span><span class="est-pill ep-joshua">Joshua</span></div></td>
+            <td><div class="prob-badge prob-high">60%<div class="prob-bar"><div class="prob-fill" style="width:60%"></div></div></div></td>
+            <td><div class="c-tth tth-missing">—</div></td>
+            <td><div class="c-notes missing">—</div></td>
+          </tr>
+          </tr>
+          <tr class="bgt-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0004-LV-BGT</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0004-LV-BGT', 'Guest House TI - Town Square', '69fcda095bae1deb38de9aaa')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/69fcda095bae1deb38de9aaa" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">Guest House TI - Town Square<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value missing">—</div></td>
+            <td><div class="c-location missing">—</div></td>
+            <td><div class="bid-date bd-none">—</div></td>
+            <td><div class="est-wrap"><span class="est-pill ep-austin">Austin</span></div></td>
+            <td><div class="prob-badge prob-mid">50%<div class="prob-bar"><div class="prob-fill" style="width:50%"></div></div></div></td>
+            <td><div class="c-tth tth-missing">—</div></td>
+            <td><div class="c-notes missing">—</div></td>
+          </tr>
+          </tr>
+          <tr class="bgt-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0057-LV-BGT</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0057-LV-BGT', 'Casablanca Pool Suite Renovation', '67f81b33855275002fe5d15c')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/67f81b33855275002fe5d15c" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">Casablanca Pool Suite Renovation<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value">$25,000</div></td>
+            <td><div class="c-location">Mesquite, NV</div></td>
+            <td><div class="bid-date bd-over">2025-04-17</div></td>
+            <td><div class="est-wrap"><span class="est-pill ep-jeff">Jeff</span><span class="est-pill ep-austin">Austin</span></div></td>
+            <td><div class="prob-badge prob-high">70%<div class="prob-bar"><div class="prob-fill" style="width:70%"></div></div></div></td>
+            <td><div class="c-tth">$1,750</div></td>
+            <td><div class="c-notes">Guestroom renovation — price same method as initial estimate.</div></td>
+          </tr>
+          </tr>
+          <tr class="bgt-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0028-LV-BGT</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0028-LV-BGT', 'Walk Church', '68a371b054cb703e120aea88')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/68a371b054cb703e120aea88" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">Walk Church<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value missing">—</div></td>
+            <td><div class="c-location missing">—</div></td>
+            <td><div class="bid-date bd-over">2025-08-29</div></td>
+            <td><div class="est-wrap"><span class="est-pill ep-austin">Austin</span><span class="est-pill ep-joshua">Joshua</span></div></td>
+            <td><div class="prob-badge prob-mid">50%<div class="prob-bar"><div class="prob-fill" style="width:50%"></div></div></div></td>
+            <td><div class="c-tth tth-missing">—</div></td>
+            <td><div class="c-notes missing">—</div></td>
+          </tr>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="phase-group" id="g-bid">
+    <div class="phase-bar" style="background:#2e0a0a;color:#fff" onclick="tog('g-bid')">
+      <span class="ph-code" style="color:#ef9a9a">BID</span>
+      <span class="ph-name">Active Bid</span>
+      <span class="ph-stats">
+        <span>4 projects</span>
+        <span>$1.4M entered</span>
+        <span style="color:#ef9a9a;font-weight:600">$105,878 TTH</span>
+      </span>
+      <span class="ph-arrow">▾</span>
+    </div>
+    <div class="phase-body">
+      <table>
+        <thead><tr>
+          <th class="col-num">BC Number</th>
+          <th class="col-name">Project Name</th>
+          <th class="col-val">Est. Value</th>
+          <th class="col-loc">Location</th>
+          <th class="col-date">Bid / Due Date</th>
+          <th class="col-est">Estimator</th>
+          <th class="col-prob">Probability</th>
+          <th class="col-tth">TTH</th>
+          <th class="col-notes">Notes</th>
+          
+        </tr></thead>
+        <tbody>
+          <tr class="bid-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0025-CA-BID</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0025-CA-BID', 'Yaamava\' — Aces Bar Cigar Lounge', '69fa0ced9e36d4f4e8084ab6')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/69fa0ced9e36d4f4e8084ab6" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">Yaamava' — Aces Bar Cigar Lounge<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value">$1.4M</div></td>
+            <td><div class="c-location">Highland, CA</div></td>
+            <td><div class="bid-date bd-today">TODAY — May 19</div></td>
+            <td><div class="est-wrap"><span class="est-pill ep-jeff">Jeff</span><span class="est-pill ep-austin">Austin</span></div></td>
+            <td><div class="prob-badge prob-high">75%<div class="prob-bar"><div class="prob-fill" style="width:75%"></div></div></div></td>
+            <td><div class="c-tth">$105,878</div></td>
+            <td><div class="c-notes">1,486 SF cigar lounge conversion. Prevailing wage / tribal requirements apply.</div></td>
+          </tr>
+          </tr>
+          <tr class="bid-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0027-LV-BID</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0027-LV-BID', 'Gramercy Office Renovation – LJA', '69f8c94976d12ce7979a174d')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/69f8c94976d12ce7979a174d" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">Gramercy Office Renovation – LJA<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value missing">—</div></td>
+            <td><div class="c-location">Las Vegas, NV</div></td>
+            <td><div class="bid-date bd-soon">2026-06-11</div></td>
+            <td><div class="est-wrap"><span class="est-pill ep-joshua">Joshua</span></div></td>
+            <td><div class="prob-badge prob-mid">55%<div class="prob-bar"><div class="prob-fill" style="width:55%"></div></div></div></td>
+            <td><div class="c-tth tth-missing">—</div></td>
+            <td><div class="c-notes">9,848 SF office TI at 9205 W Russell Rd. 23 days to bid day.</div></td>
+          </tr>
+          </tr>
+          <tr class="bid-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0030-LV-BID</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0030-LV-BID', 'The Cliffs', '6980c5a253685175825de4c0')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/6980c5a253685175825de4c0" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">The Cliffs<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value missing">—</div></td>
+            <td><div class="c-location">Henderson, NV</div></td>
+            <td><div class="bid-date bd-over">2026-04-24</div></td>
+            <td><div class="est-wrap"><span class="est-pill ep-jeff">Jeff</span><span class="est-pill ep-joshua">Joshua</span><span class="est-pill ep-austin">Austin</span></div></td>
+            <td><div class="prob-badge prob-mid">50%<div class="prob-bar"><div class="prob-fill" style="width:50%"></div></div></div></td>
+            <td><div class="c-tth tth-missing">—</div></td>
+            <td><div class="c-notes">100,000 SF open-air retail and F&amp;B. Bid date passed — confirm status.</div></td>
+          </tr>
+          </tr>
+          <tr class="bid-row">
+            <td><div class="c-num-wrap">
+              <span class="c-num">26-0041-LV-BID</span>
+              <button class="archive-btn-inline" onclick="openArchiveModal('26-0041-LV-BID', 'Silverton Ranch Casino &amp; Hotel', '671aa7ecc377f00035168dda')" title="Close / Archive this project">✕</button>
+            </div></td>
+            <td><div class="c-name">
+          <a href="https://app.buildingconnected.com/projects/671aa7ecc377f00035168dda" target="_blank" class="bc-link" title="Open in BuildingConnected ↗">Silverton Ranch Casino &amp; Hotel<span class="bc-icon">↗</span></a>
+        </div></td>
+            <td><div class="c-value missing">—</div></td>
+            <td><div class="c-location">Pahrump, NV</div></td>
+            <td><div class="bid-date bd-over">2024-12-10</div></td>
+            <td><div class="est-wrap"><span class="est-pill ep-jeff">Jeff</span><span class="est-pill ep-austin">Austin</span></div></td>
+            <td><div class="prob-badge prob-high">60%<div class="prob-bar"><div class="prob-fill" style="width:60%"></div></div></div></td>
+            <td><div class="c-tth tth-missing">—</div></td>
+            <td><div class="c-notes">29,552 SF masonry casino with hotel and sitework. Bid date passed — update phase.</div></td>
+          </tr>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<div class="footnote">
+  <div><span>Harris Associates</span> — Live Pipeline — May 19, 2026 &nbsp;·&nbsp; 54 Projects &nbsp;·&nbsp; Source: BuildingConnected API &nbsp;·&nbsp; TTH = Value × Prob × 10%</div>
+  <div>Click any project name to open in BC &nbsp;·&nbsp; Bryan = Principal/Partner — add to OPP projects in BC this weekend &nbsp;·&nbsp; OPP: Follow-Up Date shown, N/A for bid dates &nbsp;·&nbsp; Click phase bar to collapse &nbsp;·&nbsp; <span>Prob %</span> AI-suggested — override with [PROB: XX%] in BC Notes</div>
+</div>
+
+<script>
+
+// ============================================================
+// CLOSE / ARCHIVE ENGINE
+// ============================================================
+
+let archiveTarget = null;
+let archivedCount = 0;
+const archivedProjects = [];
+
+function openArchiveModal(projectNum, projectName, bcId) {
+  archiveTarget = { projectNum, projectName, bcId };
+  document.getElementById('archiveModalTitle').textContent = projectName;
+  document.getElementById('archiveModalNum').textContent = projectNum;
+  document.getElementById('archiveReasonSelect').value = '';
+  document.getElementById('archiveConfirmBtn').disabled = true;
+  document.getElementById('archiveModal').classList.add('open');
+}
+
+function closeArchiveModal() {
+  document.getElementById('archiveModal').classList.remove('open');
+  archiveTarget = null;
+}
+
+// Enable confirm button only when reason is selected
+document.addEventListener('DOMContentLoaded', function() {
+  const sel = document.getElementById('archiveReasonSelect');
+  if (sel) {
+    sel.addEventListener('change', function() {
+      document.getElementById('archiveConfirmBtn').disabled = !this.value;
+    });
+  }
+});
+
+async function confirmArchive() {
+  if (!archiveTarget) return;
+  const reason = document.getElementById('archiveReasonSelect').value;
+  if (!reason) return;
+
+  const btn = document.getElementById('archiveConfirmBtn');
+  btn.textContent = 'Archiving...';
+  btn.disabled = true;
+
+  const today = new Date().toLocaleDateString('en-US', { month:'2-digit', day:'2-digit', year:'numeric' });
+  const closeTag = '[CLOSED: ' + today + ' — ' + reason + ']';
+
+  // Write to BC if we have a BC ID
+  if (archiveTarget.bcId) {
+    try {
+      // Build prompt for Claude to execute BC update
+      const prompt = 'Update BuildingConnected project ' + archiveTarget.projectNum + ' (BC ID: ' + archiveTarget.bcId + '): Set status to inactive and set description to: ' + closeTag + ' — ' + archiveTarget.projectName;
+      console.log('BC Archive update:', prompt);
+      // sendPrompt(prompt); // Uncomment when running inside Claude chat
+    } catch(e) {
+      console.error('BC write error:', e);
+    }
+  }
+
+  // Remove the row from the pipeline view
+  const rows = document.querySelectorAll('tr[class$="-row"]');
+  for (const row of rows) {
+    const numEl = row.querySelector('.c-num');
+    if (numEl && numEl.textContent.trim() === archiveTarget.projectNum) {
+      row.classList.add('archiving');
+      setTimeout(() => {
+        row.style.display = 'none';
+        // Update phase count
+        updatePhaseCount(row);
+      }, 600);
+      break;
+    }
+  }
+
+  // Track archived projects
+  archivedProjects.push({
+    num: archiveTarget.projectNum,
+    name: archiveTarget.projectName,
+    reason: reason,
+    date: today
+  });
+  archivedCount++;
+
+  // Update archived badge in topbar
+  const badge = document.getElementById('archivedBadge');
+  if (badge) {
+    badge.textContent = '✕ ' + archivedCount + ' archived this session';
+    badge.classList.add('visible');
+  }
+
+  closeArchiveModal();
+
+  // Show toast confirmation
+  showArchiveToast(archiveTarget.projectName, reason);
+}
+
+function updatePhaseCount(row) {
+  // Find parent phase group and update count
+  const group = row.closest('.phase-group');
+  if (!group) return;
+  const allRows = group.querySelectorAll('tr[class$="-row"]');
+  const visibleRows = Array.from(allRows).filter(r => r.style.display !== 'none');
+  const bar = group.querySelector('.ph-stats span:first-child');
+  if (bar) {
+    const current = bar.textContent;
+    const num = parseInt(current);
+    if (!isNaN(num)) bar.textContent = current.replace(num, num - 1);
+  }
+}
+
+function showArchiveToast(projectName, reason) {
+  const toast = document.createElement('div');
+  toast.style.cssText = `
+    position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
+    background: #1a0a0a; border: 1px solid #c62828; border-radius: 4px;
+    padding: 10px 20px; font-family: var(--mono); font-size: 10px;
+    color: #ef9a9a; letter-spacing: 1px; z-index: 600;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4); white-space: nowrap;
+    animation: toastIn 0.3s ease, toastOut 0.3s ease 2.7s forwards;
+  `;
+  toast.textContent = '✕ Archived: ' + projectName + ' — ' + reason;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 3200);
+}
+
+// Add archive button CSS animation
+const toastStyle = document.createElement('style');
+toastStyle.textContent = `
+  @keyframes toastIn  { from { opacity:0; transform:translateX(-50%) translateY(10px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }
+  @keyframes toastOut { from { opacity:1; } to { opacity:0; } }
+`;
+document.head.appendChild(toastStyle);
+
+  function tog(id) { document.getElementById(id).classList.toggle('collapsed'); }
+</script>
+
+<script>
+// ============================================================
+// HARRIS PIPELINE — INLINE EDITING ENGINE
+// ============================================================
+
+const changes = {};  // { projectNumber: { field, oldVal, newVal } }
+const BC_IDS = {
+  '26-0045-LV-OPP': '69fe1b31a3de1f7527be739d',
+  '26-0044-LV-OPP': '69fe1aed41457087b07fda7e',
+  '26-0043-LV-OPP': '69fe1a7925d84f8f5bed119a',
+  '26-0042-LV-OC':  '69fe1a39c44d2f2b3283a883',
+  '26-0040-LV-OPP': '69fd0e3b5db92dd391a5ae44',
+  '26-0039-LV-OPP': '69fd0d261f0845809b887ef7',
+  '26-0038-LV-OPP': '69fd0cdc87608a719544388c',
+  '26-0037-LV-OPP': '69fd0c8da361b919ea9dee94',
+  '26-0017-LV-OPP': '69fd01d4bc2e2613b5d06749',
+  '26-0016-LV-OPP': '69fd0154de3f0a48410e749e',
+  '26-0015-LV-OPP': '69fd00af3d87836752e3d8c9',
+  '26-0014-LV-OPP': '69fd0051748582868712d054',
+  '26-0013-LV-OPP': '69fd0023594dcc6c149b5fc1',
+  '26-0012-LV-OPP': '69fcffd6f0aa206e0726edf6',
+  '26-0011-LV-OPP': '69fcff9a7e05390a0e601568',
+  '26-0010-LV-OPP': '69fcff2a08a8381ddd8ddf8f',
+  '26-0009-LV-OPP': '69fcfeddc8afd0aa2cda32e5',
+  '26-0008-LV-OPP': '69fcfdca0b859b47c5b12692',
+  '26-0007-LV-OPP': '69fcfd4b599c6937f72c2882',
+  '26-0006-LV-OPP': '69fcfce70a175f83dbd16abb',
+  '26-0003-LV-OPP': '69fcfbf9bff0df7c2b29edaa',
+  '26-0002-LV-OPP': '69fcfba1ba04643b1c191941',
+  '26-0001-AZ-OPP': '69fcfafd90397539e45fab19',
+  '26-0036-LV-OPP': '69fcdbf496c5fbfb31bb0948',
+  '26-0035-LV-OPP': '69fcdbd1f9b6b232c1e188a5',
+  '26-0034-LV-OPP': '69fcdbaafaa3d91d160a5ea2',
+  '26-0033-LV-BGT': '69fcdb133169532cf1c98ee6',
+  '26-0032-LV-BGT': '69fcdaeaa8a1c54f24e4d5d4',
+  '26-0031-LV-BGT': '69fcdac13c6e315459062df3',
+  '26-0005-LV-OPP': '69fcda3eb86638a37fdb4a9b',
+  '26-0004-LV-BGT': '69fcda095bae1deb38de9aaa',
+  '26-0026-LV-BGT': '69fcd98cf31ffce88a8cbd86',
+  '26-0024-LV-OPP': '69fcd96b58ed3861794dc0d9',
+  '26-0023-LV-OC':  '69fcd92dab7f56886163efbb',
+  '26-0022-LV-BGT': '69fcd8de0d226a4646060ffc',
+  '26-0021-LV-OPP': '69fcd8baa45d3b47c692f5de',
+  '26-0020-LV-OPP': '69fcd885016e2e21e3fb006f',
+  '26-0019-LV-OPP': '69fcd71ba7706fdeb2d804d4',
+  '26-0018-LV-OPP': '69fcd67d53025c3f72f7c9c6',
+  '26-0025-CA-BID': '69fa0ced9e36d4f4e8084ab6',
+  '26-0027-LV-BID': '69f8c94976d12ce7979a174d',
+  '26-0059-LV-OC':  '69e786bc92d39e41f111a4f4',
+  '26-0029-LV-BGT': '69e15545bcc88112913cff58',
+  '26-0058-LV-BGT': '699ce874567ce2abb5922e09',
+  '26-0056-LV-BGT': '698ca1226dbb3048066859fe',
+  '26-0030-LV-BID': '6980c5a253685175825de4c0',
+  '26-0055-LV-BGT': '691219a0603e8a24199ccf39',
+  '26-0054-LV-BGT': '690916b59676953176a7e560',
+  '26-0028-LV-BGT': '68a371b054cb703e120aea88',
+  '26-0057-LV-BGT': '67f81b33855275002fe5d15c',
+  '26-0041-LV-BID': '671aa7ecc377f00035168dda',
+  '26-0053-LV-OPP': '6659fdec9f1b7e016921e495',
+};
+
+// ---- SAVE BAR ----
+function updateSaveBar() {
+  const count = Object.keys(changes).length;
+  const bar = document.getElementById('saveBar');
+  const countEl = document.getElementById('changeCount');
+  countEl.textContent = count;
+  bar.classList.toggle('visible', count > 0);
+}
+
+function discardAll() {
+  location.reload();
+}
+
+// ---- VALUE EDITING ----
+function makeValueEditable(el, projectNum) {
+  el.classList.add('editable');
+  el.title = 'Click to edit estimated value';
+  el.addEventListener('click', function(e) {
+    if (el.classList.contains('editing')) return;
+    e.stopPropagation();
+    el.classList.add('editing');
+    const current = el.textContent.trim();
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = current === '—' || current === 'TBD' ? '' : current;
+    input.placeholder = 'e.g. $2,500,000';
+    input.style.cssText = 'width:100%;background:transparent;border:none;outline:none;font-family:var(--mono);font-size:11px;font-weight:600;color:var(--black);';
+    el.textContent = '';
+    el.appendChild(input);
+    input.focus();
+    input.select();
+
+    function save() {
+      const raw = input.value.trim();
+      el.classList.remove('editing');
+      if (raw && raw !== current) {
+        const num = parseFloat(raw.replace(/[$,]/g, ''));
+        const display = isNaN(num) ? raw : (num >= 1000000 ? '$' + (num/1000000).toFixed(1) + 'M' : '$' + num.toLocaleString());
+        el.textContent = display;
+        el.classList.remove('missing');
+        el.classList.add('modified');
+        if (!changes[projectNum]) changes[projectNum] = {};
+        changes[projectNum].value = raw;
+        changes[projectNum].projectNum = projectNum;
+        updateSaveBar();
+        recalcTTH(el, projectNum);
+      } else {
+        el.textContent = current;
+      }
+    }
+    input.addEventListener('blur', save);
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); input.blur(); } if (e.key === 'Escape') { el.textContent = current; el.classList.remove('editing'); } });
+  });
+}
+
+// ---- NOTES EDITING ----
+function makeNotesEditable(el, projectNum) {
+  el.classList.add('editable');
+  el.title = 'Click to edit notes';
+  el.addEventListener('click', function(e) {
+    if (el.classList.contains('editing')) return;
+    e.stopPropagation();
+    el.classList.add('editing');
+    const current = el.textContent.trim();
+    const textarea = document.createElement('textarea');
+    textarea.value = current === '—' ? '' : current;
+    textarea.placeholder = 'Add project notes...';
+    textarea.style.cssText = 'width:100%;min-height:48px;background:transparent;border:none;outline:none;font-family:var(--sans);font-size:11px;color:var(--black);resize:vertical;line-height:1.4;';
+    el.textContent = '';
+    el.appendChild(textarea);
+    textarea.focus();
+
+    function save() {
+      const raw = textarea.value.trim();
+      el.classList.remove('editing');
+      if (raw !== current && raw !== '') {
+        el.textContent = raw;
+        el.classList.remove('missing');
+        el.classList.add('modified');
+        if (!changes[projectNum]) changes[projectNum] = {};
+        changes[projectNum].notes = raw;
+        changes[projectNum].projectNum = projectNum;
+        updateSaveBar();
+      } else {
+        el.textContent = current || '—';
+      }
+    }
+    textarea.addEventListener('blur', save);
+    textarea.addEventListener('keydown', e => { if (e.key === 'Escape') { el.textContent = current; el.classList.remove('editing'); } });
+  });
+}
+
+// ---- PROBABILITY MODAL ----
+let activeProbEl = null;
+let activeProbNum = null;
+
+function openProbModal(el, projectNum, projectName, currentProb) {
+  activeProbEl = el;
+  activeProbNum = projectNum;
+  document.getElementById('probModalProject').textContent = projectName;
+  document.getElementById('probSlider').value = currentProb;
+  document.getElementById('probDisplay').textContent = currentProb + '%';
+  document.getElementById('probModal').classList.add('open');
+}
+
+function closeProbModal() {
+  document.getElementById('probModal').classList.remove('open');
+  activeProbEl = null;
+  activeProbNum = null;
+}
+
+function confirmProb() {
+  const val = parseInt(document.getElementById('probSlider').value);
+  if (activeProbEl && activeProbNum) {
+    // Update the probability badge
+    const badge = activeProbEl.querySelector('.prob-badge');
+    if (badge) {
+      const cls = val < 30 ? 'prob-low' : (val < 60 ? 'prob-mid' : 'prob-high');
+      badge.className = 'prob-badge ' + cls;
+      badge.innerHTML = val + '%<div class="prob-bar"><div class="prob-fill" style="width:' + val + '%"></div></div>';
+    }
+    activeProbEl.classList.add('modified');
+    if (!changes[activeProbNum]) changes[activeProbNum] = {};
+    changes[activeProbNum].prob = val;
+    changes[activeProbNum].projectNum = activeProbNum;
+    updateSaveBar();
+    recalcTTH(activeProbEl, activeProbNum);
+  }
+  closeProbModal();
+}
+
+// ---- TTH RECALCULATION ----
+function recalcTTH(triggerEl, projectNum) {
+  const row = triggerEl.closest('tr');
+  if (!row) return;
+  const valEl = row.querySelector('.c-value');
+  const probEl = row.querySelector('.prob-badge');
+  const tthEl = row.querySelector('.c-tth, .tth-tbd');
+  if (!valEl || !probEl || !tthEl) return;
+
+  const valText = valEl.textContent.trim().replace(/[$,M]/g, '');
+  let val = 0;
+  if (valEl.textContent.includes('M')) val = parseFloat(valText) * 1000000;
+  else val = parseFloat(valText);
+
+  const probText = probEl.textContent.trim().replace('%','');
+  const prob = parseInt(probText) || 0;
+
+  if (!isNaN(val) && val > 0 && prob > 0) {
+    const tth = val * (prob / 100) * 0.10;
+    const display = tth >= 1000000 ? '$' + (tth/1000000).toFixed(2) + 'M' : '$' + Math.round(tth).toLocaleString();
+    tthEl.className = 'c-tth modified';
+    tthEl.textContent = display;
+  }
+}
+
+// ---- BC SAVE ----
+async function saveToBC() {
+  const btn = document.getElementById('saveBCBtn');
+  const entries = Object.values(changes);
+  if (entries.length === 0) return;
+
+  btn.textContent = 'Saving...';
+  btn.classList.add('saving');
+  btn.disabled = true;
+
+  let saved = 0;
+  let failed = 0;
+  const results = [];
+
+  for (const change of entries) {
+    const bcId = BC_IDS[change.projectNum];
+    if (!bcId) {
+      results.push({ num: change.projectNum, status: 'error', msg: 'No BC ID found' });
+      failed++;
+      continue;
+    }
+
+    try {
+      // Build the BC API request body
+      const body = { project_id: bcId };
+
+      // Estimated value — native BC field
+      if (change.value !== undefined) {
+        const num = parseFloat(String(change.value).replace(/[$,M]/g, ''));
+        if (!isNaN(num)) {
+          body.estimated_value = String(change.value).includes('M') ? num * 1000000 : num;
+        }
+      }
+
+      // Notes and/or probability — both go into BC description field
+      if (change.notes !== undefined || change.prob !== undefined) {
+        // Get current description from the notes cell in the row
+        const rows = document.querySelectorAll('tr[class$="-row"]');
+        let currentDesc = '';
+        for (const row of rows) {
+          const numEl = row.querySelector('.c-num');
+          if (numEl && numEl.textContent.trim() === change.projectNum) {
+            const notesEl = row.querySelector('.c-notes');
+            if (notesEl) currentDesc = notesEl.textContent.trim();
+            break;
+          }
+        }
+
+        // Start with notes if provided, otherwise use current description
+        let newDesc = change.notes !== undefined ? change.notes : currentDesc;
+        if (newDesc === '—') newDesc = '';
+
+        // Handle probability tag — remove existing, add updated
+        if (change.prob !== undefined) {
+          newDesc = newDesc.replace(/\[PROB:\s*\d+%\]/gi, '').trim();
+          newDesc = (newDesc + ' [PROB: ' + change.prob + '%]').trim();
+        }
+
+        if (newDesc) body.description = newDesc;
+      }
+
+      // Only call API if we have something to update
+      if (Object.keys(body).length > 1) {
+        const response = await fetch('/api/bc/update_project', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+
+        // Since we cannot call BC API directly from browser HTML,
+        // we use the sendPrompt bridge to Claude which then calls BC
+        const prompt = buildBCUpdatePrompt(change.projectNum, bcId, body);
+        sendPrompt(prompt);
+        saved++;
+        results.push({ num: change.projectNum, status: 'queued', msg: 'Sent to Claude for BC write' });
+      }
+
+    } catch (err) {
+      console.error('Error saving', change.projectNum, err);
+      failed++;
+      results.push({ num: change.projectNum, status: 'error', msg: err.message });
+    }
+  }
+
+  // Show result
+  btn.textContent = saved + ' Sent to BC ✓';
+  btn.classList.remove('saving');
+  btn.classList.add('saved');
+
+  // Show detail in save bar
+  const confirm = document.getElementById('saveConfirm');
+  confirm.style.display = 'block';
+  confirm.style.color = failed > 0 ? '#ef9a9a' : '#81c784';
+  confirm.textContent = saved + ' project(s) updating in BC' + (failed > 0 ? ' · ' + failed + ' failed' : '');
+
+  setTimeout(() => {
+    btn.textContent = 'Save to BC';
+    btn.classList.remove('saved');
+    btn.disabled = false;
+  }, 3000);
+}
+
+function buildBCUpdatePrompt(projectNum, bcId, body) {
+  const parts = ['Update BuildingConnected project ' + projectNum + ' (ID: ' + bcId + '):'];
+  if (body.estimated_value !== undefined) parts.push('- Set estimated_value to ' + body.estimated_value);
+  if (body.description !== undefined) parts.push('- Set description to: ' + body.description);
+  return parts.join('\n');
+}
+
+// Direct BC update function — called by save button
+// Uses sendPrompt to pass the update instruction to Claude
+// Claude then calls Ask Harris BC:update_project with the correct parameters
+async function executeBCUpdates() {
+  const btn = document.getElementById('saveBCBtn');
+  const entries = Object.values(changes);
+  if (entries.length === 0) return;
+
+  btn.textContent = 'Writing to BC...';
+  btn.classList.add('saving');
+  btn.disabled = true;
+
+  // Build a single consolidated prompt for all changes
+  let prompt = 'Please update the following projects in BuildingConnected using the update_project tool. Update each one individually:\n\n';
+
+  for (const change of entries) {
+    const bcId = BC_IDS[change.projectNum];
+    if (!bcId) continue;
+
+    prompt += 'Project: ' + change.projectNum + ' | BC ID: ' + bcId + '\n';
+
+    if (change.value !== undefined) {
+      const num = parseFloat(String(change.value).replace(/[$,M]/g, ''));
+      const finalVal = String(change.value).toUpperCase().includes('M') ? num * 1000000 : num;
+      prompt += '  - estimated_value: ' + finalVal + '\n';
+    }
+
+    let descParts = [];
+    if (change.notes !== undefined && change.notes !== '—') descParts.push(change.notes);
+    if (change.prob !== undefined) descParts.push('[PROB: ' + change.prob + '%]');
+    if (descParts.length > 0) prompt += '  - description: ' + descParts.join(' ') + '\n';
+
+    prompt += '\n';
+  }
+
+  prompt += 'Confirm each update succeeded and report back which projects were saved.';
+
+  // Send to Claude via sendPrompt
+  sendPrompt(prompt);
+
+  btn.textContent = '✓ Sent to Claude';
+  btn.classList.remove('saving');
+  btn.classList.add('saved');
+
+  const confirm = document.getElementById('saveConfirm');
+  confirm.style.display = 'block';
+  confirm.style.color = '#81c784';
+  confirm.textContent = entries.length + ' change(s) sent to Claude → BC. Check chat for confirmation.';
+
+  setTimeout(() => {
+    btn.textContent = 'Save to BC';
+    btn.classList.remove('saved');
+    btn.disabled = false;
+  }, 4000);
+}
+
+// ---- INIT — make all rows editable on load ----
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('tr[class$="-row"]').forEach(row => {
+    const numEl = row.querySelector('.c-num');
+    if (!numEl) return;
+    const projectNum = numEl.textContent.trim();
+    const nameEl = row.querySelector('.bc-link, .c-name');
+    const projectName = nameEl ? nameEl.textContent.replace('↗','').trim() : projectNum;
+
+    // Value cell
+    const valEl = row.querySelector('.c-value');
+    if (valEl) makeValueEditable(valEl, projectNum);
+
+    // Notes cell
+    const notesEl = row.querySelector('.c-notes');
+    if (notesEl) makeNotesEditable(notesEl, projectNum);
+
+    // Probability cell
+    const probWrap = row.querySelector('.prob-badge')?.parentElement;
+    const probBadge = row.querySelector('.prob-badge');
+    if (probWrap && probBadge) {
+      probWrap.style.cursor = 'pointer';
+      probWrap.title = 'Click to edit probability';
+      probWrap.addEventListener('click', function(e) {
+        e.stopPropagation();
+        const current = parseInt(probBadge.textContent) || 20;
+        openProbModal(probWrap, projectNum, projectName, current);
+      });
+    }
+  });
+});
+</script>
+
+<!-- SAVE BAR -->
+<div class="save-bar" id="saveBar">
+  <div class="save-bar-count" id="changeCount">0</div>
+  <div class="save-bar-text">unsaved changes &nbsp;·&nbsp; click Save to write to BC</div>
+  <button class="save-bc-btn" id="saveBCBtn" onclick="executeBCUpdates()">Save to BC</button>
+  <button class="discard-btn" onclick="discardAll()">Discard</button>
+  <span id="saveConfirm" style="display:none;font-family:var(--mono);font-size:10px;color:#81c784;letter-spacing:1px;">✓ Changes logged — update BC manually or via API</span>
+</div>
+
+<!-- PROBABILITY MODAL -->
+<div class="prob-modal" id="probModal">
+  <div class="prob-modal-box">
+    <div class="prob-modal-title">Update Probability</div>
+    <div class="prob-modal-project" id="probModalProject"></div>
+    <div class="prob-slider-wrap">
+      <input type="range" class="prob-slider" id="probSlider" min="0" max="100" step="5"
+        oninput="document.getElementById('probDisplay').textContent = this.value + '%'">
+      <div class="prob-display" id="probDisplay">20%</div>
+    </div>
+    <div class="prob-presets">
+      <span class="prob-preset" onclick="document.getElementById('probSlider').value=10;document.getElementById('probDisplay').textContent='10%'">10% Raw Lead</span>
+      <span class="prob-preset" onclick="document.getElementById('probSlider').value=25;document.getElementById('probDisplay').textContent='25%'">25% Early</span>
+      <span class="prob-preset" onclick="document.getElementById('probSlider').value=50;document.getElementById('probDisplay').textContent='50%'">50% Even</span>
+      <span class="prob-preset" onclick="document.getElementById('probSlider').value=75;document.getElementById('probDisplay').textContent='75%'">75% Likely</span>
+      <span class="prob-preset" onclick="document.getElementById('probSlider').value=90;document.getElementById('probDisplay').textContent='90%'">90% Near Certain</span>
+    </div>
+    <div class="prob-modal-actions">
+      <button class="prob-cancel-btn" onclick="closeProbModal()">Cancel</button>
+      <button class="prob-confirm-btn" onclick="confirmProb()">Update</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ARCHIVE MODAL -->
+<div class="archive-modal" id="archiveModal">
+  <div class="archive-modal-box">
+    <div class="archive-modal-warning">⚠ Close / Archive Project</div>
+    <div class="archive-modal-title" id="archiveModalTitle"></div>
+    <div class="archive-modal-num" id="archiveModalNum"></div>
+    <div class="archive-modal-label">Reason for closing</div>
+    <select class="archive-reason-select" id="archiveReasonSelect">
+      <option value="">— Select a reason —</option>
+      <option value="Dead Lead — Never Real">Dead Lead — Never Real</option>
+      <option value="Client Went Another Direction">Client Went Another Direction</option>
+      <option value="Project Cancelled">Project Cancelled</option>
+      <option value="On Hold Indefinitely">On Hold Indefinitely</option>
+      <option value="Awarded to Competitor">Awarded to Competitor</option>
+    </select>
+    <div class="archive-modal-note">This will mark the project inactive in BuildingConnected and remove it from the pipeline view. This action cannot be undone from the report.</div>
+    <div class="archive-modal-actions">
+      <button class="archive-cancel-btn" onclick="closeArchiveModal()">Cancel</button>
+      <button class="archive-confirm-btn" id="archiveConfirmBtn" onclick="confirmArchive()" disabled>Confirm Archive</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,37 @@
+{
+  "/home/user/graphify/worked/precon-estimating/raw/forge_bid_book_state.json": {
+    "mtime": 1781815110.2124474,
+    "ast_hash": "152b752fc3318d6e31fc6bda9a663590",
+    "semantic_hash": "152b752fc3318d6e31fc6bda9a663590"
+  },
+  "/home/user/graphify/worked/precon-estimating/raw/proposals_text.json": {
+    "mtime": 1781815166.5124462,
+    "ast_hash": "88819459124115d793eea4c9b2cfd705",
+    "semantic_hash": "88819459124115d793eea4c9b2cfd705"
+  },
+  "/home/user/graphify/worked/precon-estimating/raw/Harris_BC_Project_Numbering_SOP.html": {
+    "mtime": 1781815014.2364495,
+    "ast_hash": "1412b1eb01d69cea143602e9ef188dd2",
+    "semantic_hash": "1412b1eb01d69cea143602e9ef188dd2"
+  },
+  "/home/user/graphify/worked/precon-estimating/raw/Harris_Live_Pipeline_v4_7.html": {
+    "mtime": 1781814959.2105105,
+    "ast_hash": "26d943eb6f6efc292e305a29558a3b7c",
+    "semantic_hash": "26d943eb6f6efc292e305a29558a3b7c"
+  },
+  "/home/user/graphify/worked/precon-estimating/raw/Harris_Precon_Folder_Structure.html": {
+    "mtime": 1781815042.800449,
+    "ast_hash": "ed2714035c4cbe938da1f34929be47f4",
+    "semantic_hash": "ed2714035c4cbe938da1f34929be47f4"
+  },
+  "/home/user/graphify/worked/precon-estimating/raw/SCHEMA_SPEC.md": {
+    "mtime": 1781815069.7764482,
+    "ast_hash": "31b0c8886531f8c8af2f256efc45e35e",
+    "semantic_hash": "31b0c8886531f8c8af2f256efc45e35e"
+  },
+  "/home/user/graphify/worked/precon-estimating/raw/sub_bids_list.txt": {
+    "mtime": 1781815291.5899308,
+    "ast_hash": "9c2cf141d1de4570e9193d52e9589b45",
+    "semantic_hash": "9c2cf141d1de4570e9193d52e9589b45"
+  }
+}
