@@ -193,3 +193,22 @@ qs = suggest_questions(G, comm, labels)
 (OUT/"GRAPH_REPORT.md").write_text(generate(G, comm, coh, labels, gods, surp, detect, {"input":0,"output":0}, ".", suggested_questions=qs))
 to_json(G, comm, str(OUT/"graph.json"))
 print(f"GRAPH: {G.number_of_nodes()} nodes, {G.number_of_edges()} edges, {len(comm)} communities")
+
+# ---- auditable cost record (committed) ----
+# The ETL is deterministic — no LLM call — so every build is 0 LLM tokens.
+# The fields exist to capture real numbers if a semantic-extraction stage is added.
+from datetime import datetime, timezone
+cost_path = ROOT / "cost.json"
+cost = json.loads(cost_path.read_text()) if cost_path.exists() else {
+    "tool": "atlas-ops ingest.py", "build": "deterministic (structured data, no LLM)",
+    "total_llm_input_tokens": 0, "total_llm_output_tokens": 0, "runs": []}
+cost["runs"].append({
+    "date": datetime.now(timezone.utc).isoformat(),
+    "llm_input_tokens": 0, "llm_output_tokens": 0,
+    "nodes": G.number_of_nodes(), "edges": G.number_of_edges(), "communities": len(comm),
+    "bc_projects": len(bc_proj), "acc_projects": len(acc_proj),
+    "bc_depth_projects": depth_projects, "distinct_subcontractors": len(depth_subs),
+    "bid_edges": depth_bids, "acc_depth_projects": acc_depth,
+})
+cost_path.write_text(json.dumps(cost, indent=2))
+print(f"cost.json: build #{len(cost['runs'])} logged — 0 LLM tokens (deterministic)")

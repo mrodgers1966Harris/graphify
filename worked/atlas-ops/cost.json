@@ -1,0 +1,22 @@
+{
+  "tool": "atlas-ops ingest.py",
+  "build": "deterministic (structured data, no LLM)",
+  "total_llm_input_tokens": 0,
+  "total_llm_output_tokens": 0,
+  "runs": [
+    {
+      "date": "2026-06-18T23:08:39.123685+00:00",
+      "llm_input_tokens": 0,
+      "llm_output_tokens": 0,
+      "nodes": 464,
+      "edges": 658,
+      "communities": 115,
+      "bc_projects": 66,
+      "acc_projects": 28,
+      "bc_depth_projects": 4,
+      "distinct_subcontractors": 188,
+      "bid_edges": 404,
+      "acc_depth_projects": 2
+    }
+  ]
+}
