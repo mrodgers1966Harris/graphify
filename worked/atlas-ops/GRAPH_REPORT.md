@@ -5,8 +5,8 @@
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 122 nodes · 46 edges · 78 communities (8 shown, 70 thin omitted)
-- Extraction: 70% EXTRACTED · 30% INFERRED · 0% AMBIGUOUS · INFERRED: 14 edges (avg confidence: 0.81)
+- 305 nodes · 398 edges · 98 communities (25 shown, 73 thin omitted)
+- Extraction: 63% EXTRACTED · 37% INFERRED · 0% AMBIGUOUS · INFERRED: 147 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Community Hubs (Navigation)
@@ -88,60 +88,159 @@
 - [[_COMMUNITY_Community 75|Community 75]]
 - [[_COMMUNITY_Community 76|Community 76]]
 - [[_COMMUNITY_Community 77|Community 77]]
+- [[_COMMUNITY_Community 78|Community 78]]
+- [[_COMMUNITY_Community 79|Community 79]]
+- [[_COMMUNITY_Community 80|Community 80]]
+- [[_COMMUNITY_Community 81|Community 81]]
+- [[_COMMUNITY_Community 82|Community 82]]
+- [[_COMMUNITY_Community 83|Community 83]]
+- [[_COMMUNITY_Community 84|Community 84]]
+- [[_COMMUNITY_Community 85|Community 85]]
+- [[_COMMUNITY_Community 86|Community 86]]
+- [[_COMMUNITY_Community 87|Community 87]]
+- [[_COMMUNITY_Community 88|Community 88]]
+- [[_COMMUNITY_Community 89|Community 89]]
+- [[_COMMUNITY_Community 90|Community 90]]
+- [[_COMMUNITY_Community 91|Community 91]]
+- [[_COMMUNITY_Community 92|Community 92]]
+- [[_COMMUNITY_Community 93|Community 93]]
+- [[_COMMUNITY_Community 94|Community 94]]
+- [[_COMMUNITY_Community 95|Community 95]]
+- [[_COMMUNITY_Community 96|Community 96]]
+- [[_COMMUNITY_Community 97|Community 97]]
 
 ## God Nodes (most connected - your core abstractions)
 
 ## Surprising Connections (you probably didn't know these)
-- None detected - all connections are within the same source files.
+- `Insul-Flow Inc. (subcontractor)` --bids_in_trade--> `CSI 03 — Concrete`  [INFERRED]
+  buildingconnected://companies → csi://masterformat  _Bridges community 6 → community 24_
+- `Tradewinds Construction, Inc. (subcontractor)` --bids_in_trade--> `CSI 06 — Wood & Plastics`  [INFERRED]
+  buildingconnected://companies → csi://masterformat  _Bridges community 0 → community 2_
+- `Southern Nevada Drywall System LLC  (subcontractor)` --bids_in_trade--> `CSI 04 — Masonry`  [INFERRED]
+  buildingconnected://companies → csi://masterformat  _Bridges community 6 → community 2_
+- `Commercial Roofers, Inc. (subcontractor)` --bids_in_trade--> `CSI 07 — Thermal & Moisture`  [INFERRED]
+  buildingconnected://companies → csi://masterformat  _Bridges community 0 → community 12_
+- `Giroux Glass, Inc. (subcontractor)` --bids_in_trade--> `CSI 08 — Openings`  [INFERRED]
+  buildingconnected://companies → csi://masterformat  _Bridges community 0 → community 1_
 
 ## Import Cycles
 - None detected.
 
-## Communities (78 total, 70 thin omitted)
+## Communities (98 total, 73 thin omitted)
 
 ### Community 0 - "Community 0"
+Cohesion: 0.12
+Nodes (30): Silverton — Building Insulation (Div 7.2) · 10 bids · $0.20M–$0.43M, Silverton — Doors, Frames & Hardware (Div 8.1) · 17 bids · $0.06M–$2.62M, Silverton — Millwork (Div 6.2) · 11 bids · $0.15M–$5.55M, Silverton — Fireproofing (Div 7.8) · 1 bids · $0.03M–$0.03M, Silverton — Epoxy Flooring (misc) · 1 bids · $0.18M–$0.18M, Silverton — Metal Panels (misc) · 2 bids · $0.95M–$2.37M, Silverton — Acoustical Ceilings (ACT) (misc) · 1 bids · $0.20M–$0.20M, Alcal Specialty Contracting, Inc. (subcontractor) (+22 more)
+
+### Community 1 - "Community 1"
+Cohesion: 0.14
+Nodes (19): Klai Juba Wald Architects (architect), Silverton Ranch Casino and adjacent Hotel with Sitework - Pahrump (26-0041-LV-BID) · BC · PUBLISHED · $53.0M, Silverton — Bathroom Accessories (Div 10.2) · 6 bids · $0.01M–$0.89M, Silverton — Glass & Glazing (Div 8.8) · 7 bids · $0.06M–$2.89M, Silverton — Operable Wall Partitions (Div 10.22) · 0 bids, Silverton — Storefront / Glass (Div 8.4) · 5 bids · $0.17M–$2.11M, Silverton — Temporary Fencing (Div 01.56) · 0 bids, Silverton — Temp Facilities (misc) · 0 bids (+11 more)
+
+### Community 2 - "Community 2"
+Cohesion: 0.18
+Nodes (17): Silverton — Drywall & Framing (Div 9.2) · 13 bids · $0.57M–$13.92M, Silverton — EIFS / Stucco (Div 7.2) · 9 bids · $0.29M–$1.20M, Silverton — Wood Framing (Div 6) · 3 bids · $0.73M–$0.89M, Silverton — Stucco (misc) · 4 bids · $0.44M–$1.00M, Capitol City Stucco Inc. (subcontractor), T&V Plaster (subcontractor), Hardy Painting and Drywall (subcontractor), Tradewinds Construction, Inc. (subcontractor) (+9 more)
+
+### Community 3 - "Community 3"
+Cohesion: 0.29
+Nodes (14): Silverton — HVAC Ducting (Div 23) · 10 bids · $0.00M–$13.18M, Silverton — Plumbing & Fixtures (Div 22) · 7 bids · $4.11M–$8.12M, P1 Construction, LLC (subcontractor), Southland Industries (subcontractor), Atlas Mechanical, Inc. (subcontractor), Las Vegas Prestige Plumbing (subcontractor), Sunrise Air Systems, Inc. (subcontractor), Jays Plumbing & Service (subcontractor) (+6 more)
+
+### Community 4 - "Community 4"
+Cohesion: 0.27
+Nodes (14): Silverton — Structural Steel (Div 5) · 16 bids · $1.46M–$3.26M, Silverton — Misc. Metals (Div 5.5) · 2 bids · $0.17M–$2.53M, Steel Structures Inc. (subcontractor), Steel Solutions (subcontractor), Quality Iron Inc. (subcontractor), Steel Concepts (subcontractor), Valley Steel, LLC (subcontractor), JD Stairs (subcontractor) (+6 more)
+
+### Community 5 - "Community 5"
+Cohesion: 0.29
+Nodes (14): Silverton — Grading / Earthwork (Div 31) · 9 bids · $0.03M–$1.97M, Silverton — Underground Utilities (Div 33) · 7 bids · $0.65M–$1.02M, Affordable Striping & Sealing LLC. (subcontractor), VT Construction (subcontractor), Byrd Underground (subcontractor), Civil Werx (subcontractor), Reliant Construction (subcontractor), CT Equipment (subcontractor) (+6 more)
+
+### Community 6 - "Community 6"
+Cohesion: 0.30
+Nodes (12): Silverton — Concrete (Div 3) · 14 bids · $0.58M–$2.05M, Silverton — CMU Masonry (Div 4.2) · 8 bids · $0.71M–$1.53M, XL Concrete Masonry LLC (subcontractor), Precision Concrete (subcontractor), 2T Concrete, LLC (subcontractor), INTEGRITY CONCRETE, LLC (subcontractor), ACE Masonry (subcontractor), Hirschi Masonry (subcontractor) (+4 more)
+
+### Community 7 - "Community 7"
 Cohesion: 0.22
 Nodes (11): Town Square Pad 2 · ACC (active construction), Shake Shack Town Square · ACC (active construction), Harris | Design Build (architect), WeWork - Amazon Town Square-Opinion of Cost (26-0059-LV-OC) · BC · DRAFT · $1.0M, Guest House TI - Town Square (26-0004-LV-BGT) · BC · DRAFT, Town Square - Building C T.I. (26-0036-LV-OPP) · BC · DRAFT · $3.0M, Shake Shack Henderson G/U (26-0076-LV-OPP) · BC · DRAFT · $2.5M, Fairbourne (client) (+3 more)
 
-### Community 1 - "Community 1"
+### Community 8 - "Community 8"
+Cohesion: 0.44
+Nodes (9): Silverton — Fire Alarm (Div 28) · 4 bids · $0.33M–$0.66M, Silverton — Fire Protection (Div 21) · 5 bids · $0.17M–$1.37M, Everon, LLC (subcontractor), API Group Life Safety USA LLC (DBA’s: Alltec Services, 3-D Fire Protection, 3-D Fire & Life Safety Systems, Advanced Fire Protection, Api Systems Integrators, Arizona Verde Fire Protection, Armor Fire Protection, Branson Fire Extinguisher, Branson Security & Fire, Branson Security Systems, Cascade Fire Protection, Delta Fire Systems, Harmony Fire Protection, Mainline Fire Protection, Morristown Automatic Sprinkler Company, National Fire Suppression, Ohio Valley Sprinklers, Omlid & Swinney, Premier Fire & Security, Security Fire Protection, Security Fire Protection Company, Signal One Fire, Statewide Fire Protection, Western States Fire Protection, Western States Fire Protection Company, General Fire Sprinkler) (subcontractor), Ace Fire Systems, LLC (subcontractor), ABS Fire Protection & Electronic Services (subcontractor), Xtreme Fire Protection, LLC (subcontractor), CSI 21 — Fire Suppression (+1 more)
+
+### Community 9 - "Community 9"
+Cohesion: 0.42
+Nodes (9): Silverton — Final Cleaning (Div 1) · 12 bids · $0.01M–$0.19M, A USA Building Services LLC (subcontractor), Pristine Building Maintenance LLC (subcontractor), Cleaning Services Inc. (subcontractor), D&F Midsouth Cleaning, LLC - (WE CLEAN NATIONWIDE) (subcontractor), Aujrel Pittman & Associates  (subcontractor), J&S Construction Clean Up, Inc (subcontractor), Mapcc Services llc  (subcontractor) (+1 more)
+
+### Community 10 - "Community 10"
+Cohesion: 0.46
+Nodes (8): Silverton — Electrical (Div 26-27) · 12 bids · $1.76M–$8.28M, Northstar Electric, Inc. (subcontractor), Jackson Electric (subcontractor), Able Electric Company (subcontractor), Precision Electric Inc. (subcontractor), Adobe Communications Electronic Inc. (subcontractor), Helix Electric, LLC (subcontractor), CSI 26 — Electrical
+
+### Community 11 - "Community 11"
 Cohesion: 0.33
 Nodes (6): American Beer & Cocktails @Treasure Island Casino · ACC (active construction), Burgers @Treasure Island Casino · ACC (active construction), El Corazon @Treasure Island Casino · ACC (active construction), JIVE Architecture (architect), Treasure Island - El Corazon - CD’s (26-0056-LV-BGT) · BC · PUBLISHED · $5.0M, Fine Treasure, LLC (client)
 
-### Community 2 - "Community 2"
+### Community 12 - "Community 12"
+Cohesion: 0.33
+Nodes (6): Silverton — Roofing (Div 7.5) · 18 bids · $0.04M–$2.75M, Commercial Roofers, Inc. (subcontractor), The Original Roofing Company (subcontractor), A.W. Farrell & Son, Inc. (subcontractor), D&L Roofing (subcontractor), Vegas Born Roofing, LLC (subcontractor)
+
+### Community 13 - "Community 13"
+Cohesion: 0.60
+Nodes (6): Silverton — Landscaping (Div 32) · 8 bids · $0.59M–$1.29M, BrightView Landscape Development, Inc. (subcontractor), Park West Rescom, Inc. (subcontractor), Par 3 Landscape (subcontractor), Pierros Landscape & Maintenance (subcontractor), CSI 32 — Exterior Improvements
+
+### Community 14 - "Community 14"
+Cohesion: 0.70
+Nodes (5): Silverton — Elevators (Div 14) · 5 bids · $0.32M–$0.42M, TK Elevator Corporation (subcontractor), Otis Elevator Company (subcontractor), Schindler Elevator Corporation (subcontractor), CSI 14 — Conveying
+
+### Community 15 - "Community 15"
 Cohesion: 0.50
 Nodes (4): Staccato Priarie Fire - Phase 1 (26-0031-LV-OPP) · BC · DRAFT, Staccato Priarie Fire - Phase 2 (26-0032-LV-OPP) · BC · DRAFT, Staccato Priarie Fire - Phase 3 (26-0033-LV-OPP) · BC · DRAFT, Staccato Vegas (client)
 
-### Community 3 - "Community 3"
+### Community 16 - "Community 16"
 Cohesion: 0.50
 Nodes (4): Dicks Sporting Goods DTS (26-0037-LV-OPP) · BC · DRAFT · $40.0M, Faith Lutheran Summerlin (26-0038-LV-OPP) · BC · DRAFT · $75.0M, Club House Summerlin West Hills (26-0039-LV-OPP) · BC · DRAFT · $25.0M, Howard Hughes (client)
 
-### Community 4 - "Community 4"
+### Community 17 - "Community 17"
+Cohesion: 0.50
+Nodes (4): Silverton — QA / Inspections (Div 1.43) · 4 bids · $0.14M–$0.48M, GeoTek (subcontractor), UES Professional Solutions, LLC (subcontractor), Centurion Consultants (subcontractor)
+
+### Community 18 - "Community 18"
+Cohesion: 0.50
+Nodes (4): Silverton — Flooring (Div 9) · 7 bids · $0.24M–$1.52M, FKF Floorworks (subcontractor), One Stop 4 Flooring (subcontractor), Go Pro Interiors (subcontractor)
+
+### Community 19 - "Community 19"
 Cohesion: 0.67
 Nodes (3): Finney's At Downtown Summerlin · ACC (active construction), The Resort Summerlin (26-0023-LV-OC) · BC · DRAFT · $175.0M, Rampart Casino (client)
 
-### Community 5 - "Community 5"
+### Community 20 - "Community 20"
 Cohesion: 0.67
 Nodes (3): Casablanca Room Remodel & Corridor Remodel · ACC (active construction), Casablanca Pool Suite Renovation (26-0057-LV-BGT) · BC · PUBLISHED · $5.2M, ECL Development LLC (client)
 
-### Community 6 - "Community 6"
+### Community 21 - "Community 21"
 Cohesion: 0.67
 Nodes (3): Decatur Desert Plaza · ACC (active construction), Decatur Desert Plaza - Pad TI's (26-0019-LV-OPP) · BC · DRAFT, Decatur Desert Plaza (client)
 
-### Community 7 - "Community 7"
+### Community 22 - "Community 22"
 Cohesion: 0.67
 Nodes (3): HOK (architect), Gramercy Office Renovation – LJA Engineering (26-0027-LV-BID) · BC · PUBLISHED · $1.0M, LJA Engineering (client)
 
+### Community 23 - "Community 23"
+Cohesion: 1.00
+Nodes (3): Silverton — Kitchen Equipment (Div 11) · 1 bids · $5.52M–$5.52M, Royal Metal Works Inc. (subcontractor), CSI 11 — Equipment
+
+### Community 24 - "Community 24"
+Cohesion: 0.67
+Nodes (3): Silverton — Gypcrete (Div 3.5) · 3 bids · $0.21M–$0.21M, Insul-Flow Inc. (subcontractor), Nevada Gypsum Floors, llc (subcontractor)
+
 ## Knowledge Gaps
-- **70 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **73 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Are the 2 inferred relationships involving `WeWork - Amazon Town Square-Opinion of Cost (26-0059-LV-OC) · BC · DRAFT · $1.0M` (e.g. with `Town Square Pad 2 · ACC (active construction)` and `Shake Shack Town Square · ACC (active construction)`) actually correct?**
-  _`WeWork - Amazon Town Square-Opinion of Cost (26-0059-LV-OC) · BC · DRAFT · $1.0M` has 2 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 3 inferred relationships involving `Treasure Island - El Corazon - CD’s (26-0056-LV-BGT) · BC · PUBLISHED · $5.0M` (e.g. with `American Beer & Cocktails @Treasure Island Casino · ACC (active construction)` and `Burgers @Treasure Island Casino · ACC (active construction)`) actually correct?**
-  _`Treasure Island - El Corazon - CD’s (26-0056-LV-BGT) · BC · PUBLISHED · $5.0M` has 3 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 4 inferred relationships involving `Shake Shack Town Square · ACC (active construction)` (e.g. with `WeWork - Amazon Town Square-Opinion of Cost (26-0059-LV-OC) · BC · DRAFT · $1.0M` and `Guest House TI - Town Square (26-0004-LV-BGT) · BC · DRAFT`) actually correct?**
-  _`Shake Shack Town Square · ACC (active construction)` has 4 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 2 inferred relationships involving `Town Square - Building C T.I. (26-0036-LV-OPP) · BC · DRAFT · $3.0M` (e.g. with `Town Square Pad 2 · ACC (active construction)` and `Shake Shack Town Square · ACC (active construction)`) actually correct?**
-  _`Town Square - Building C T.I. (26-0036-LV-OPP) · BC · DRAFT · $3.0M` has 2 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 19 inferred relationships involving `CSI 08 — Openings` (e.g. with `Giroux Glass, Inc. (subcontractor)` and `Star Hardware, Inc. (subcontractor)`) actually correct?**
+  _`CSI 08 — Openings` has 19 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 16 inferred relationships involving `CSI 07 — Thermal & Moisture` (e.g. with `Alcal Specialty Contracting, Inc. (subcontractor)` and `Southwest Specialty Contractors, LLC (subcontractor)`) actually correct?**
+  _`CSI 07 — Thermal & Moisture` has 16 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 11 inferred relationships involving `CSI 05 — Metals` (e.g. with `Steel Structures Inc. (subcontractor)` and `Steel Solutions (subcontractor)`) actually correct?**
+  _`CSI 05 — Metals` has 11 INFERRED edges - model-reasoned connections that need verification._
+- **Should `Community 0` be split into smaller, more focused modules?**
+  _Cohesion score 0.11724137931034483 - nodes in this community are weakly interconnected._
+- **Should `Community 1` be split into smaller, more focused modules?**
+  _Cohesion score 0.14035087719298245 - nodes in this community are weakly interconnected._
