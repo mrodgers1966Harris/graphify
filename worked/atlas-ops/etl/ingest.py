@@ -132,6 +132,46 @@ for pdir in sorted((STAGING / "projects").glob("*")) if (STAGING / "projects").e
               src="buildingconnected://bids")
             if mj in MF: E(sn, f"trade_{mj:02d}", "bids_in_trade", "INFERRED", 0.85)
 
+# ---- ACC/Forma depth (P3): RFIs + issues as risk nodes, submittals -> CSI trades ----
+def _result_lines(p):
+    if not Path(p).exists(): return []
+    try: d = json.loads(Path(p).read_text())
+    except Exception: return []
+    txt = d.get("result", "") if isinstance(d, dict) else str(d)
+    return [ln.strip().lstrip("-").strip() for ln in txt.splitlines() if ln.strip().startswith("-")]
+def _spec_div(s):
+    m = re.match(r"\s*(\d{2})", s or ""); return int(m.group(1)) if m else None
+
+acc_depth = 0
+accdir = STAGING / "acc"
+for adir in (sorted(accdir.glob("*")) if accdir.exists() else []):
+    aid = adir.name
+    anode = nid("acc", aid)
+    if anode not in nodes: N(anode, f"{aid} · ACC (active construction)", "document", "acc://projects")
+    acc_depth += 1
+    nr = ni = ns = 0
+    for ln in _result_lines(adir / "rfis.json"):
+        m = re.match(r"\[([^\]]+)\]\s*(.*?)\s*\(ID:\s*([^)]+)\)", ln)
+        if m:
+            E(anode, N("rfi_" + m.group(3), f"RFI: {m.group(2)[:60]} [{m.group(1)}]", "document", "acc://rfis"),
+              "has_rfi", src="acc://rfis"); nr += 1
+    for ln in _result_lines(adir / "issues.json"):
+        m = re.match(r"\[([^\]]+)\]\s*(.*?)\s*\(ID:\s*([^)]+)\)", ln)
+        if m:
+            E(anode, N("issue_" + m.group(3), f"Issue: {m.group(2)[:60]} [{m.group(1)}]", "document", "acc://issues"),
+              "has_issue", src="acc://issues"); ni += 1
+    divcount = {}
+    for ln in _result_lines(adir / "submittals.json"):
+        parts = [p.strip() for p in ln.split("·")]
+        mj = _spec_div(parts[1]) if len(parts) > 1 else None
+        if mj in MF: divcount[mj] = divcount.get(mj, 0) + 1
+        ns += 1
+    for mj, cnt in divcount.items():  # submittal trade -> SAME node BC bids use (cross-system)
+        E(anode, N(f"trade_{mj:02d}", f"CSI {mj:02d} — {MF[mj]}", "concept", "csi://masterformat"),
+          "submittals_in_trade", "EXTRACTED", 1.0, float(cnt), "acc://submittals")
+    nodes[anode]["label"] = nodes[anode]["label"] + f" · {nr} RFIs · {ns} submittals · {ni} issues"
+if acc_depth: print(f"ACC depth: {acc_depth} project(s)")
+
 extract = {"nodes": list(nodes.values()), "edges": edges, "hyperedges": [], "input_tokens": 0, "output_tokens": 0}
 (OUT/".graphify_extract.json").write_text(json.dumps(extract, indent=2))
 detect = {"files": {"document": ["buildingconnected://projects","acc://projects","buildingconnected://packages"]},

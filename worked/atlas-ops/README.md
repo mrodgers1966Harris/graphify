@@ -21,7 +21,7 @@ that genuinely span pursuit → construction (Paiute, El Corazon, Decatur…).
 |---|---|---|
 | **P1** | BC + ACC project backbone + clients/architects/sectors + name-matched cross-system links | ✅ built |
 | **P2** | BC depth: per-project bid packages → bids → **subcontractors** → CSI trades (the dense layer) | ⏳ next |
-| **P3** | ACC depth: RFIs, submittals, issues, budgets per Forma project | ⏳ |
+| **P3** | ACC depth: RFIs/issues as risk nodes; submittals → CSI trades (cross-system bridge) | ✅ engine + pilot |
 | **P4** | SharePoint docs + merge the `precon-estimating` graph; dedup shared entities across systems | ⏳ |
 | **P5** | Operationalize: scheduled rebuild as the principal-scoped `atlas-graphify-ops` MCP server | ⏳ |
 
@@ -66,6 +66,11 @@ sectors + 14 cross-system links) plus bid depth for the 4 active pursuits (Silve
 Majestic, Gramercy): **188 subcontractors, 404 bids**, rolled to CSI trades. **59 subs bid 2+ pursuits**
 (Henri Specialties + G&R Insulation bid all four) — the cross-project hubs. Add more projects by dropping
 their `bids.json` + `invites.json` into `_staging/projects/<id>/` and re-running.
+
+**ACC depth (P3):** RFIs/issues become risk nodes on their Forma project; submittals link the project to
+the **same CSI trade nodes the BC bids use** — so a trade (e.g. *CSI 09 Finishes*) is a hub spanning
+**bidding (BC) ↔ construction (ACC)**. Pilot pulls The Cliff (RFIs) + America @ NYNY (submittals); 11
+trade nodes already bridge both systems. Drop ACC pulls into `_staging/acc/<formaId>/{rfis,submittals,issues}.json`.
 
 ## Data sensitivity
 
