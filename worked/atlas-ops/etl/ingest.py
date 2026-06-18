@@ -90,10 +90,21 @@ for bpid, bn in bc_proj:
 # ---- depth: per-project bid packages -> subs -> trades ----
 depth_projects, depth_subs, depth_bids = 0, set(), 0
 for pdir in sorted((STAGING / "projects").glob("*")) if (STAGING / "projects").exists() else []:
-    if not (pdir / "packages.json").exists(): continue
-    doc = json.loads((pdir / "packages.json").read_text())
-    proj, packages = doc["project"], doc["packages"]
     invites, bids = load_list(pdir / "invites.json"), load_list(pdir / "bids.json")
+    if (pdir / "packages.json").exists():
+        doc = json.loads((pdir / "packages.json").read_text())
+        proj, packages = doc["project"], doc["packages"]
+    elif invites:
+        # No packages.json: derive packages from invites (they carry bidPackageName/Id).
+        # div/CSI is unknown this way, so these packages won't get a trade node.
+        pname = next((i.get("projectName") for i in invites if i.get("projectName")), pdir.name)
+        proj = {"id": pdir.name, "name": pname}
+        packages = {}
+        for i in invites:
+            pid_ = i.get("bidPackageId")
+            if pid_: packages.setdefault(pid_, {"name": i.get("bidPackageName") or pid_, "div": ""})
+    else:
+        continue
     cn = {}
     for inv in invites:
         c = inv.get("bidderCompany") or {}
