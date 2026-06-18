@@ -46,15 +46,24 @@ tools and answers in natural language against the graph:
 Verified working via `etl/test_connect.py` (a minimal MCP stdio client — lists tools, calls `graph_stats`
 and `query_graph`).
 
-## Rebuild
+## Build (one repeatable engine)
 
 ```bash
-PYTHONPATH=<graphify-repo>  .venv/bin/python etl/build_phase1.py
+PYTHONPATH=<graphify-repo>  .venv/bin/python etl/ingest.py
 ```
 
-Reads the staged live pulls in `_staging/` (gitignored — contains raw business data incl. vendor pricing)
-and writes `graph.json` + `GRAPH_REPORT.md`. Re-pull the staging files via the Atlas MCP servers
-(`Atlas_BC list_projects` / `list_opportunities`, `Atlas_Forma list_projects`).
+`etl/ingest.py` is the whole pipeline: it reads the `_staging/` tree of live pulls and writes
+`graph.json` + `GRAPH_REPORT.md`. **Scaling out is data, not code** — drop another
+`_staging/projects/<bcProjectId>/{packages,bids,invites}.json` into the tree and re-run; the engine
+picks it up automatically and the recurring-subcontractor hubs grow across projects.
+
+The PULL stage (which MCP calls produce that tree) is specified in **`PULL_RUNBOOK.md`**. `_staging/` is
+gitignored (raw business data incl. vendor pricing). At full scale the PULL + BUILD run inside the
+`atlas-graphify-ops` service (see `atlas-oi/mcp/graphify-ops/`), not interactively.
+
+**Current build:** 305 nodes · 398 edges — backbone (66 BC + 28 ACC projects + clients/architects/
+sectors + 14 cross-system links) plus the Silverton depth pilot (40 packages → 124 subcontractors →
+246 bids → CSI trades).
 
 ## Data sensitivity
 
