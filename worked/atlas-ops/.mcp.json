@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "atlas-ops": {
+      "command": "graphify-mcp",
+      "args": ["./worked/atlas-ops/graph.json"]
+    }
+  }
+}
