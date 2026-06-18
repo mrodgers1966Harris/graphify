@@ -61,9 +61,11 @@ The PULL stage (which MCP calls produce that tree) is specified in **`PULL_RUNBO
 gitignored (raw business data incl. vendor pricing). At full scale the PULL + BUILD run inside the
 `atlas-graphify-ops` service (see `atlas-oi/mcp/graphify-ops/`), not interactively.
 
-**Current build:** 305 nodes · 398 edges — backbone (66 BC + 28 ACC projects + clients/architects/
-sectors + 14 cross-system links) plus the Silverton depth pilot (40 packages → 124 subcontractors →
-246 bids → CSI trades).
+**Current build:** 460 nodes · 643 edges — backbone (66 BC + 28 ACC projects + clients/architects/
+sectors + 14 cross-system links) plus bid depth for the 4 active pursuits (Silverton, Walk Church,
+Majestic, Gramercy): **188 subcontractors, 404 bids**, rolled to CSI trades. **59 subs bid 2+ pursuits**
+(Henri Specialties + G&R Insulation bid all four) — the cross-project hubs. Add more projects by dropping
+their `bids.json` + `invites.json` into `_staging/projects/<id>/` and re-running.
 
 ## Data sensitivity
 
