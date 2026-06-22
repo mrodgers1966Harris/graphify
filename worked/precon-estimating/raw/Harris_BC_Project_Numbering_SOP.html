@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Harris Associates — BuildingConnected Project Numbering SOP</title>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <div>
+      <div class="company-name">Harris Associates Contracting</div>
+      <div class="doc-title">PROJECT NUMBERING SOP</div>
+    </div>
+    <div class="doc-meta">
+      <strong>Document Info</strong>
+      Version 1.0<br>
+      Effective: May 2026<br>
+      Platform: BuildingConnected<br>
+      Owner: Jeff Contenta<br>
+      Dept: Preconstruction
+    </div>
+  </div>
+  <p class="header-desc">
+    This document establishes the standard operating procedure for creating and numbering projects
+    in BuildingConnected across all Harris Associates offices. Consistent numbering ensures projects
+    are traceable from first opportunity through award, and enables accurate reporting across pursuits,
+    estimates, and active bids.
+  </p>
+</div>
+
+<div class="main">
+
+  <!-- SECTION 1: FORMAT -->
+  <div class="section-label">Section 01</div>
+  <div class="section-title">The Standard Number Format</div>
+
+  <div class="format-box">
+    <div class="format-string">26-0001-LV-BID</div>
+    <div class="format-legend">
+      <div class="legend-item year">
+        <div class="legend-key">Year</div>
+        <div class="legend-val">Two-digit fiscal year the project was created in BuildingConnected.</div>
+      </div>
+      <div class="legend-item seq">
+        <div class="legend-key">Sequence</div>
+        <div class="legend-val">Four-digit sequential number, zero-padded, unique per office per year per type.</div>
+      </div>
+      <div class="legend-item office">
+        <div class="legend-key">Office Code</div>
+        <div class="legend-val">Two-letter code for the originating Harris office. LV = Las Vegas. AZ = Arizona.</div>
+      </div>
+      <div class="legend-item type">
+        <div class="legend-key">Project Type</div>
+        <div class="legend-val">Three-letter code indicating the current phase or purpose of the project record.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 2: OFFICE CODES -->
+  <div class="section-label">Section 02</div>
+  <div class="section-title">Office Codes</div>
+
+  <div class="office-grid">
+    <div class="office-card">
+      <div class="office-code">LV</div>
+      <div class="office-info">
+        <div class="office-city">Las Vegas, NV</div>
+        <div class="office-note">Primary / Home Office</div>
+      </div>
+    </div>
+    <div class="office-card">
+      <div class="office-code">AZ</div>
+      <div class="office-info">
+        <div class="office-city">Phoenix / Scottsdale, AZ</div>
+        <div class="office-note">Arizona Operations</div>
+      </div>
+    </div>
+    <div class="office-card">
+      <div class="office-code">CA</div>
+      <div class="office-info">
+        <div class="office-city">California</div>
+        <div class="office-note">Use if/when CA office is established</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 3: PROJECT TYPE CODES -->
+  <div class="section-label">Section 03</div>
+  <div class="section-title">Project Type Codes &amp; When to Use Them</div>
+
+  <table class="phase-table">
+    <thead>
+      <tr>
+        <th>Code</th>
+        <th>Phase Name</th>
+        <th>Description</th>
+        <th>When to Create</th>
+        <th>BC Setup Notes</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="phase-row">
+        <td><span class="code-badge">OPP</span></td>
+        <td><div class="phase-name">Opportunity</div></td>
+        <td class="phase-desc">Early-stage pursuit. Client has made contact or issued an RFQ/RFP but no drawings or scope documents are available yet. No formal estimate has been started.</td>
+        <td class="trigger-text">Create when Harris decides to formally pursue a project and wants to track it in BC.</td>
+        <td class="bc-action"><strong>isForBudgeting: No</strong><br>No bid packages yet. Notes field for pursuit status.</td>
+      </tr>
+      <tr class="phase-row">
+        <td><span class="code-badge">ROM</span></td>
+        <td><div class="phase-name">Rough Order of Magnitude</div></td>
+        <td class="phase-desc">High-level ballpark cost estimate produced with minimal documents — typically square footage, project type, and comparable project data. Accuracy range: ±30–50%.</td>
+        <td class="trigger-text">Create when a client requests a quick number before committing to full design or when Harris needs a go/no-go threshold.</td>
+        <td class="bc-action"><strong>isForBudgeting: Yes</strong><br>Enter single lump-sum cost. Note basis of estimate in description.</td>
+      </tr>
+      <tr class="phase-row">
+        <td><span class="code-badge">OC</span></td>
+        <td><div class="phase-name">Opinion of Cost</div></td>
+        <td class="phase-desc">Formal cost opinion prepared from schematic or design development documents. More detailed than a ROM but not a full sub-solicited bid. Typically delivered to owner/architect as a design tool. Accuracy range: ±15–25%.</td>
+        <td class="trigger-text">Create when Harris is engaged by owner or architect to validate design budget before construction documents are complete.</td>
+        <td class="bc-action"><strong>isForBudgeting: Yes</strong><br>Use cost line items by division. Document scope assumptions clearly.</td>
+      </tr>
+      <tr class="phase-row">
+        <td><span class="code-badge">EST</span></td>
+        <td><div class="phase-name">Estimate</div></td>
+        <td class="phase-desc">Detailed internal estimate prepared from construction documents (50–100% CDs). May or may not involve subcontractor solicitation. Used to establish Harris's internal budget before going to bid or entering GMP negotiations.</td>
+        <td class="trigger-text">Create when CDs are sufficient to support a trade-by-trade takeoff and Harris is developing its own number ahead of a formal bid.</td>
+        <td class="bc-action"><strong>isForBudgeting: Yes</strong><br>Create bid packages by trade. May solicit select subs for budget pricing.</td>
+      </tr>
+      <tr class="phase-row">
+        <td><span class="code-badge">BID</span></td>
+        <td><div class="phase-name">Active Bid</div></td>
+        <td class="phase-desc">Formal competitive or negotiated bid process. Harris is actively soliciting subcontractor bids across all trades, managing a bid due date, and preparing a formal proposal for submission to the owner.</td>
+        <td class="trigger-text">Create when a bid due date is set and Harris is formally soliciting subcontractors in BC.</td>
+        <td class="bc-action"><strong>isForBudgeting: No</strong><br>Set bid due date. Create bid packages per trade. Invite subs. Seal bids if required.</td>
+      </tr>
+      <tr class="phase-row">
+        <td><span class="code-badge">AWD</span></td>
+        <td><div class="phase-name">Post-Bid / Awarded</div></td>
+        <td class="phase-desc">Harris has been awarded the project or is in final GMP/contract negotiations. The BC project record transitions to an awarded state and becomes the reference point for the executed subcontract solicitation.</td>
+        <td class="trigger-text">Update status when Harris receives a formal Letter of Intent, executed contract, or NTP.</td>
+        <td class="bc-action"><strong>awarded: true</strong><br>Update project status to awarded. Link to ACC/Forma project if applicable.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- SECTION 4: EXAMPLES -->
+  <div class="section-label">Section 04</div>
+  <div class="section-title">Real-World Examples</div>
+
+  <div class="examples-grid">
+    <div class="example-card">
+      <div class="example-number">26-0001-LV-OPP</div>
+      <div class="example-project">New Restaurant Pursuit — Downtown Summerlin</div>
+      <div class="example-detail">Owner reached out for GC qualifications. No drawings yet. Tracking in BC to manage follow-up.</div>
+    </div>
+    <div class="example-card">
+      <div class="example-number">26-0001-LV-ROM</div>
+      <div class="example-project">Hotel Guestroom Renovation — 200 Rooms</div>
+      <div class="example-detail">Client needs a ballpark before hiring an architect. Harris provided a per-room ROM based on comparable projects.</div>
+    </div>
+    <div class="example-card">
+      <div class="example-number">26-0001-LV-OC</div>
+      <div class="example-project">WeWork Amazon Town Square — Office Upgrades</div>
+      <div class="example-detail">Architect engaged Harris during SD phase to validate design budget. Formal OC delivered to ownership group.</div>
+    </div>
+    <div class="example-card">
+      <div class="example-number">26-0001-LV-EST</div>
+      <div class="example-project">The Cliffs — Dual Brand Hotel</div>
+      <div class="example-detail">100% CDs received. Harris developing internal estimate ahead of GMP negotiations. Subs solicited for select trades.</div>
+    </div>
+    <div class="example-card">
+      <div class="example-number">26-0001-AZ-BID</div>
+      <div class="example-project">Scottsdale Restaurant TI — Competitive Bid</div>
+      <div class="example-detail">Owner issued ITB to three GCs. Harris soliciting all trades in BC with sealed bids due June 15, 2026.</div>
+    </div>
+    <div class="example-card">
+      <div class="example-number">26-0001-LV-AWD</div>
+      <div class="example-project">Casino Food &amp; Beverage Renovation — Awarded</div>
+      <div class="example-detail">LOI received. Project transitions from BID to AWD status. Subcontract solicitation begins in BC.</div>
+    </div>
+  </div>
+
+  <!-- SECTION 5: RULES -->
+  <div class="section-label">Section 05</div>
+  <div class="section-title">Operating Rules</div>
+
+  <ul class="rules-list">
+    <li>
+      <span class="rule-num">R-01</span>
+      <span class="rule-text"><strong>Every project entered in BuildingConnected must receive a number.</strong> Unnumbered projects are not searchable, reportable, or traceable. No exceptions.</span>
+    </li>
+    <li>
+      <span class="rule-num">R-02</span>
+      <span class="rule-text"><strong>Numbers are assigned at creation and never changed.</strong> If a project evolves from a ROM to a BID, do not renumber. Instead, update the project description to reflect the current phase. The original number is permanent.</span>
+    </li>
+    <li>
+      <span class="rule-num">R-03</span>
+      <span class="rule-text"><strong>Sequences are tracked per year, per office, per type.</strong> 26-0001-LV-BID and 26-0001-AZ-BID can coexist. 26-0001-LV-BID and 26-0001-LV-OC can coexist. No two projects within the same year/office/type combination may share a number.</span>
+    </li>
+    <li>
+      <span class="rule-num">R-04</span>
+      <span class="rule-text"><strong>The Preconstruction team owns the number register.</strong> Jeff Contenta or a designated Preconstruction coordinator assigns new numbers. Do not self-assign numbers without confirmation from Preconstruction.</span>
+    </li>
+    <li>
+      <span class="rule-num">R-05</span>
+      <span class="rule-text"><strong>Projects that do not advance are not deleted.</strong> Mark them inactive or close them in BC with a note. The number is retired, not reused.</span>
+    </li>
+    <li>
+      <span class="rule-num">R-06</span>
+      <span class="rule-text"><strong>The project name in BC should match the name used in all client-facing documents, emails, and QuickBooks.</strong> Avoid abbreviations or internal shorthand in the official name field.</span>
+    </li>
+    <li>
+      <span class="rule-num">R-07</span>
+      <span class="rule-text"><strong>Awarded projects must be linked to the corresponding ACC / Forma project</strong> once mobilization begins. The BC number becomes the reference ID across both platforms.</span>
+    </li>
+    <li>
+      <span class="rule-num">R-08</span>
+      <span class="rule-text"><strong>The year in the number reflects the year the BC record was created</strong>, not the year construction begins. A project created in December 2026 that constructs in 2027 is still numbered 26-####-XX-XXX.</span>
+    </li>
+  </ul>
+
+  <!-- SECTION 6: QUICK REFERENCE -->
+  <div class="section-label">Section 06</div>
+  <div class="section-title">Quick Reference Card</div>
+
+  <table class="phase-table">
+    <thead>
+      <tr>
+        <th>Code</th>
+        <th>Phase</th>
+        <th>Drawings Available?</th>
+        <th>Subs Solicited?</th>
+        <th>Has Bid Date?</th>
+        <th>For Budgeting?</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="phase-row">
+        <td><span class="code-badge">OPP</span></td>
+        <td class="trigger-text">Opportunity</td>
+        <td class="phase-desc">No</td>
+        <td class="phase-desc">No</td>
+        <td class="phase-desc">No</td>
+        <td class="phase-desc">No</td>
+      </tr>
+      <tr class="phase-row">
+        <td><span class="code-badge">ROM</span></td>
+        <td class="trigger-text">Rough Order of Magnitude</td>
+        <td class="phase-desc">Maybe (conceptual)</td>
+        <td class="phase-desc">No</td>
+        <td class="phase-desc">No</td>
+        <td class="phase-desc">Yes</td>
+      </tr>
+      <tr class="phase-row">
+        <td><span class="code-badge">OC</span></td>
+        <td class="trigger-text">Opinion of Cost</td>
+        <td class="phase-desc">Yes (SD/DD)</td>
+        <td class="phase-desc">Sometimes</td>
+        <td class="phase-desc">No</td>
+        <td class="phase-desc">Yes</td>
+      </tr>
+      <tr class="phase-row">
+        <td><span class="code-badge">EST</span></td>
+        <td class="trigger-text">Estimate</td>
+        <td class="phase-desc">Yes (50–100% CDs)</td>
+        <td class="phase-desc">Yes (select trades)</td>
+        <td class="phase-desc">Sometimes</td>
+        <td class="phase-desc">Yes</td>
+      </tr>
+      <tr class="phase-row">
+        <td><span class="code-badge">BID</span></td>
+        <td class="trigger-text">Active Bid</td>
+        <td class="phase-desc">Yes (100% CDs)</td>
+        <td class="phase-desc">Yes (all trades)</td>
+        <td class="phase-desc">Yes</td>
+        <td class="phase-desc">No</td>
+      </tr>
+      <tr class="phase-row">
+        <td><span class="code-badge">AWD</span></td>
+        <td class="trigger-text">Awarded</td>
+        <td class="phase-desc">Yes</td>
+        <td class="phase-desc">Yes</td>
+        <td class="phase-desc">Passed</td>
+        <td class="phase-desc">No</td>
+      </tr>
+    </tbody>
+  </table>
+
+</div>
+
+<div class="footer">
+  <div><span>Harris Associates Contracting</span> — BuildingConnected Project Numbering SOP — Version 1.0</div>
+  <div>Effective May 2026 | Owner: <span>Jeff Contenta</span> | Preconstruction &amp; Estimating</div>
+</div>
+
+</body>
+</html>
