@@ -124,12 +124,33 @@ $GRAPHIFY_PYTHON | Out-File -FilePath graphify-out\.graphify_python -Encoding ut
 
 If the import succeeds, print nothing and move straight to Step 2.
 
-**In every subsequent block, run Python through the saved interpreter — `& (Get-Content graphify-out\.graphify_python)` in place of a bare `python3` — so every step uses the interpreter that actually has graphify.**
+**In every subsequent block, run Python through the checked interpreter so every step uses the interpreter that actually has graphify. The bash blocks below start with the interpreter check and call `"${GRAPHIFY_PY:?}"`; keep those lines when you run them. When you run a step in PowerShell instead, start it with the check below and call `& $GRAPHIFY_PY` in place of a bare `python3`. Never run the contents of `graphify-out\.graphify_python` unchecked: a cloned repository can ship that file, and the check refuses relative paths and anything inside this project or its git work tree.**
+
+```powershell
+$GRAPHIFY_PY = "$(Get-Content -Raw -LiteralPath graphify-out\.graphify_python -ErrorAction SilentlyContinue)".Trim()
+try {
+    $_gok = ($GRAPHIFY_PY -match '^([A-Za-z]:[\\/]|/(?![\\/]))') -and ($GRAPHIFY_PY -notmatch '~|^/(proc|dev)/|(^|[\\/])\.\.?([\\/]|$)') -and (Test-Path -LiteralPath $GRAPHIFY_PY -PathType Leaf)
+    $_gi = Get-Item -LiteralPath $GRAPHIFY_PY -Force; $_gpaths = @($_gi.FullName)
+    if ($_gi.LinkType) { $_gpaths += $(if ($_gi.PSObject.Methods['ResolveLinkTarget']) { $_gi.ResolveLinkTarget($true).FullName } else { [IO.Path]::GetFullPath([IO.Path]::Combine($_gi.DirectoryName, "$($_gi.Target)")) }) }
+    $_groots = @((Get-Location).ProviderPath) + @(if (Get-Command git -ErrorAction SilentlyContinue) { git rev-parse --show-toplevel 2>$null }) | Where-Object { $_ } | ForEach-Object { ([IO.Path]::GetFullPath($_) -replace '\\', '/').TrimEnd('/') + '/' }
+    foreach ($_gp in $_gpaths) {
+        for ($_ga = $(if ($_gp -eq $_gpaths[0]) { Split-Path -Parent $_gp } else { $_gp }); $_ga; $_ga = Split-Path -Parent $_ga) { if ((Get-Item -LiteralPath $_ga -Force).LinkType) { $_gok = $false } }
+        foreach ($_gr in $_groots) { if (($_gp -replace '\\', '/').StartsWith($_gr, [StringComparison]::OrdinalIgnoreCase)) { $_gok = $false } }
+    }
+} catch { $_gok = $false }
+if (-not $_gok) { $GRAPHIFY_PY = $null; Write-Error "graphify: refusing graphify-out\.graphify_python - it must name an absolute Python outside this project; rerun the interpreter guard" }
+```
 
 ### Step 2 - Detect files
 
 ```bash
-$(cat graphify-out/.graphify_python) -c "
+GRAPHIFY_PY="$(cat graphify-out/.graphify_python)"
+case "$GRAPHIFY_PY" in //*|/proc/*|/dev/*|*~*|*[/\\].[/\\]*|*[/\\]..[/\\]*|*[/\\].|*[/\\]..) GRAPHIFY_PY= ;; /*|[A-Za-z]:[/\\]*) ;; *) GRAPHIFY_PY= ;; esac
+_gdir="$(CDPATH= cd -P "${GRAPHIFY_PY%[/\\]*}/" 2>/dev/null && pwd -P)"
+_gchk="$(printf '|%s/' "$GRAPHIFY_PY" "$_gdir" "$(realpath "$GRAPHIFY_PY" 2>/dev/null)" | tr 'A-Z\\' 'a-z/')"
+for _gd in "$PWD" "$(pwd -P)" "$(git rev-parse --show-toplevel 2>/dev/null)"; do _gd="$(printf '%s' "$_gd" | tr 'A-Z\\' 'a-z/')"; [ -n "$_gd" ] && case "$_gchk" in *"|$_gd"/*) GRAPHIFY_PY= ;; esac; done
+[ -n "$_gdir" ] && [ -f "$GRAPHIFY_PY" ] && [ -x "$GRAPHIFY_PY" ] || { GRAPHIFY_PY=; echo "graphify: refusing graphify-out/.graphify_python - it must name an absolute Python outside this project; rerun the interpreter guard" >&2; }
+"${GRAPHIFY_PY:?}" -c "
 import json
 from graphify.detect import detect
 from pathlib import Path
@@ -191,7 +212,13 @@ Note: Parallelizing AST + semantic saves 5-15s on large corpora. AST is determin
 For any code files detected, run AST extraction in parallel with Part B subagents:
 
 ```bash
-$(cat graphify-out/.graphify_python) -c "
+GRAPHIFY_PY="$(cat graphify-out/.graphify_python)"
+case "$GRAPHIFY_PY" in //*|/proc/*|/dev/*|*~*|*[/\\].[/\\]*|*[/\\]..[/\\]*|*[/\\].|*[/\\]..) GRAPHIFY_PY= ;; /*|[A-Za-z]:[/\\]*) ;; *) GRAPHIFY_PY= ;; esac
+_gdir="$(CDPATH= cd -P "${GRAPHIFY_PY%[/\\]*}/" 2>/dev/null && pwd -P)"
+_gchk="$(printf '|%s/' "$GRAPHIFY_PY" "$_gdir" "$(realpath "$GRAPHIFY_PY" 2>/dev/null)" | tr 'A-Z\\' 'a-z/')"
+for _gd in "$PWD" "$(pwd -P)" "$(git rev-parse --show-toplevel 2>/dev/null)"; do _gd="$(printf '%s' "$_gd" | tr 'A-Z\\' 'a-z/')"; [ -n "$_gd" ] && case "$_gchk" in *"|$_gd"/*) GRAPHIFY_PY= ;; esac; done
+[ -n "$_gdir" ] && [ -f "$GRAPHIFY_PY" ] && [ -x "$GRAPHIFY_PY" ] || { GRAPHIFY_PY=; echo "graphify: refusing graphify-out/.graphify_python - it must name an absolute Python outside this project; rerun the interpreter guard" >&2; }
+"${GRAPHIFY_PY:?}" -c "
 import sys, json
 from graphify.extract import collect_files, extract
 from pathlib import Path
@@ -217,7 +244,13 @@ else:
 **Fast path:** If detection found zero docs, papers, and images (code-only corpus), skip Part B entirely and go straight to Part C. AST handles code - there is nothing for semantic subagents to do. **First write an empty semantic file** so Part C's merge has its input (it reads `.graphify_semantic.json` unconditionally; without this a code-only run hits `FileNotFoundError`):
 
 ```bash
-$(cat graphify-out/.graphify_python) -c "
+GRAPHIFY_PY="$(cat graphify-out/.graphify_python)"
+case "$GRAPHIFY_PY" in //*|/proc/*|/dev/*|*~*|*[/\\].[/\\]*|*[/\\]..[/\\]*|*[/\\].|*[/\\]..) GRAPHIFY_PY= ;; /*|[A-Za-z]:[/\\]*) ;; *) GRAPHIFY_PY= ;; esac
+_gdir="$(CDPATH= cd -P "${GRAPHIFY_PY%[/\\]*}/" 2>/dev/null && pwd -P)"
+_gchk="$(printf '|%s/' "$GRAPHIFY_PY" "$_gdir" "$(realpath "$GRAPHIFY_PY" 2>/dev/null)" | tr 'A-Z\\' 'a-z/')"
+for _gd in "$PWD" "$(pwd -P)" "$(git rev-parse --show-toplevel 2>/dev/null)"; do _gd="$(printf '%s' "$_gd" | tr 'A-Z\\' 'a-z/')"; [ -n "$_gd" ] && case "$_gchk" in *"|$_gd"/*) GRAPHIFY_PY= ;; esac; done
+[ -n "$_gdir" ] && [ -f "$GRAPHIFY_PY" ] && [ -x "$GRAPHIFY_PY" ] || { GRAPHIFY_PY=; echo "graphify: refusing graphify-out/.graphify_python - it must name an absolute Python outside this project; rerun the interpreter guard" >&2; }
+"${GRAPHIFY_PY:?}" -c "
 import json
 from pathlib import Path
 Path('graphify-out/.graphify_semantic.json').write_text(json.dumps({'nodes':[],'edges':[],'hyperedges':[],'input_tokens':0,'output_tokens':0}), encoding='utf-8')
@@ -237,7 +270,13 @@ Before dispatching subagents, print a timing estimate:
 Before dispatching any subagents, check which files already have cached extraction results:
 
 ```bash
-$(cat graphify-out/.graphify_python) -c "
+GRAPHIFY_PY="$(cat graphify-out/.graphify_python)"
+case "$GRAPHIFY_PY" in //*|/proc/*|/dev/*|*~*|*[/\\].[/\\]*|*[/\\]..[/\\]*|*[/\\].|*[/\\]..) GRAPHIFY_PY= ;; /*|[A-Za-z]:[/\\]*) ;; *) GRAPHIFY_PY= ;; esac
+_gdir="$(CDPATH= cd -P "${GRAPHIFY_PY%[/\\]*}/" 2>/dev/null && pwd -P)"
+_gchk="$(printf '|%s/' "$GRAPHIFY_PY" "$_gdir" "$(realpath "$GRAPHIFY_PY" 2>/dev/null)" | tr 'A-Z\\' 'a-z/')"
+for _gd in "$PWD" "$(pwd -P)" "$(git rev-parse --show-toplevel 2>/dev/null)"; do _gd="$(printf '%s' "$_gd" | tr 'A-Z\\' 'a-z/')"; [ -n "$_gd" ] && case "$_gchk" in *"|$_gd"/*) GRAPHIFY_PY= ;; esac; done
+[ -n "$_gdir" ] && [ -f "$GRAPHIFY_PY" ] && [ -x "$GRAPHIFY_PY" ] || { GRAPHIFY_PY=; echo "graphify: refusing graphify-out/.graphify_python - it must name an absolute Python outside this project; rerun the interpreter guard" >&2; }
+"${GRAPHIFY_PY:?}" -c "
 import json
 from graphify.cache import check_semantic_cache
 from pathlib import Path
@@ -305,7 +344,13 @@ If more than half the chunks failed or are missing, stop and tell the user to re
 
 Merge all chunk files into `.graphify_semantic_new.json`. **After each Agent call completes, read the real token counts from the Agent tool result's `usage` field and write them back into the chunk JSON before merging** — the chunk JSON itself always has placeholder zeros. Then run:
 ```bash
-$(cat graphify-out/.graphify_python) -c "
+GRAPHIFY_PY="$(cat graphify-out/.graphify_python)"
+case "$GRAPHIFY_PY" in //*|/proc/*|/dev/*|*~*|*[/\\].[/\\]*|*[/\\]..[/\\]*|*[/\\].|*[/\\]..) GRAPHIFY_PY= ;; /*|[A-Za-z]:[/\\]*) ;; *) GRAPHIFY_PY= ;; esac
+_gdir="$(CDPATH= cd -P "${GRAPHIFY_PY%[/\\]*}/" 2>/dev/null && pwd -P)"
+_gchk="$(printf '|%s/' "$GRAPHIFY_PY" "$_gdir" "$(realpath "$GRAPHIFY_PY" 2>/dev/null)" | tr 'A-Z\\' 'a-z/')"
+for _gd in "$PWD" "$(pwd -P)" "$(git rev-parse --show-toplevel 2>/dev/null)"; do _gd="$(printf '%s' "$_gd" | tr 'A-Z\\' 'a-z/')"; [ -n "$_gd" ] && case "$_gchk" in *"|$_gd"/*) GRAPHIFY_PY= ;; esac; done
+[ -n "$_gdir" ] && [ -f "$GRAPHIFY_PY" ] && [ -x "$GRAPHIFY_PY" ] || { GRAPHIFY_PY=; echo "graphify: refusing graphify-out/.graphify_python - it must name an absolute Python outside this project; rerun the interpreter guard" >&2; }
+"${GRAPHIFY_PY:?}" -c "
 import json, glob
 from pathlib import Path
 
@@ -329,7 +374,13 @@ print(f'Merged {len(chunks)} chunks: {total_in:,} in / {total_out:,} out tokens'
 
 Save new results to cache:
 ```bash
-$(cat graphify-out/.graphify_python) -c "
+GRAPHIFY_PY="$(cat graphify-out/.graphify_python)"
+case "$GRAPHIFY_PY" in //*|/proc/*|/dev/*|*~*|*[/\\].[/\\]*|*[/\\]..[/\\]*|*[/\\].|*[/\\]..) GRAPHIFY_PY= ;; /*|[A-Za-z]:[/\\]*) ;; *) GRAPHIFY_PY= ;; esac
+_gdir="$(CDPATH= cd -P "${GRAPHIFY_PY%[/\\]*}/" 2>/dev/null && pwd -P)"
+_gchk="$(printf '|%s/' "$GRAPHIFY_PY" "$_gdir" "$(realpath "$GRAPHIFY_PY" 2>/dev/null)" | tr 'A-Z\\' 'a-z/')"
+for _gd in "$PWD" "$(pwd -P)" "$(git rev-parse --show-toplevel 2>/dev/null)"; do _gd="$(printf '%s' "$_gd" | tr 'A-Z\\' 'a-z/')"; [ -n "$_gd" ] && case "$_gchk" in *"|$_gd"/*) GRAPHIFY_PY= ;; esac; done
+[ -n "$_gdir" ] && [ -f "$GRAPHIFY_PY" ] && [ -x "$GRAPHIFY_PY" ] || { GRAPHIFY_PY=; echo "graphify: refusing graphify-out/.graphify_python - it must name an absolute Python outside this project; rerun the interpreter guard" >&2; }
+"${GRAPHIFY_PY:?}" -c "
 import json
 from graphify.cache import save_semantic_cache
 from pathlib import Path
@@ -342,7 +393,13 @@ print(f'Cached {saved} files')
 
 Merge cached + new results into `graphify-out/.graphify_semantic.json`:
 ```bash
-$(cat graphify-out/.graphify_python) -c "
+GRAPHIFY_PY="$(cat graphify-out/.graphify_python)"
+case "$GRAPHIFY_PY" in //*|/proc/*|/dev/*|*~*|*[/\\].[/\\]*|*[/\\]..[/\\]*|*[/\\].|*[/\\]..) GRAPHIFY_PY= ;; /*|[A-Za-z]:[/\\]*) ;; *) GRAPHIFY_PY= ;; esac
+_gdir="$(CDPATH= cd -P "${GRAPHIFY_PY%[/\\]*}/" 2>/dev/null && pwd -P)"
+_gchk="$(printf '|%s/' "$GRAPHIFY_PY" "$_gdir" "$(realpath "$GRAPHIFY_PY" 2>/dev/null)" | tr 'A-Z\\' 'a-z/')"
+for _gd in "$PWD" "$(pwd -P)" "$(git rev-parse --show-toplevel 2>/dev/null)"; do _gd="$(printf '%s' "$_gd" | tr 'A-Z\\' 'a-z/')"; [ -n "$_gd" ] && case "$_gchk" in *"|$_gd"/*) GRAPHIFY_PY= ;; esac; done
+[ -n "$_gdir" ] && [ -f "$GRAPHIFY_PY" ] && [ -x "$GRAPHIFY_PY" ] || { GRAPHIFY_PY=; echo "graphify: refusing graphify-out/.graphify_python - it must name an absolute Python outside this project; rerun the interpreter guard" >&2; }
+"${GRAPHIFY_PY:?}" -c "
 import json
 from pathlib import Path
 
@@ -375,7 +432,13 @@ Clean up temp files: `rm -f graphify-out/.graphify_cached.json graphify-out/.gra
 #### Part C - Merge AST + semantic into final extraction
 
 ```bash
-$(cat graphify-out/.graphify_python) -c "
+GRAPHIFY_PY="$(cat graphify-out/.graphify_python)"
+case "$GRAPHIFY_PY" in //*|/proc/*|/dev/*|*~*|*[/\\].[/\\]*|*[/\\]..[/\\]*|*[/\\].|*[/\\]..) GRAPHIFY_PY= ;; /*|[A-Za-z]:[/\\]*) ;; *) GRAPHIFY_PY= ;; esac
+_gdir="$(CDPATH= cd -P "${GRAPHIFY_PY%[/\\]*}/" 2>/dev/null && pwd -P)"
+_gchk="$(printf '|%s/' "$GRAPHIFY_PY" "$_gdir" "$(realpath "$GRAPHIFY_PY" 2>/dev/null)" | tr 'A-Z\\' 'a-z/')"
+for _gd in "$PWD" "$(pwd -P)" "$(git rev-parse --show-toplevel 2>/dev/null)"; do _gd="$(printf '%s' "$_gd" | tr 'A-Z\\' 'a-z/')"; [ -n "$_gd" ] && case "$_gchk" in *"|$_gd"/*) GRAPHIFY_PY= ;; esac; done
+[ -n "$_gdir" ] && [ -f "$GRAPHIFY_PY" ] && [ -x "$GRAPHIFY_PY" ] || { GRAPHIFY_PY=; echo "graphify: refusing graphify-out/.graphify_python - it must name an absolute Python outside this project; rerun the interpreter guard" >&2; }
+"${GRAPHIFY_PY:?}" -c "
 import sys, json
 from pathlib import Path
 
@@ -411,8 +474,14 @@ print(f'Merged: {total} nodes, {edges} edges ({len(ast[\"nodes\"])} AST + {len(s
 **Before starting:** the code blocks below pass `directed=IS_DIRECTED` to `build_from_json()`. Replace `IS_DIRECTED` with `True` if `--directed` was given (builds a `DiGraph` preserving edge direction source→target), otherwise `False` (the default undirected `Graph`). Substitute it the same way you substitute `INPUT_PATH` — do not leave the literal `IS_DIRECTED` in the code.
 
 ```bash
+GRAPHIFY_PY="$(cat graphify-out/.graphify_python)"
+case "$GRAPHIFY_PY" in //*|/proc/*|/dev/*|*~*|*[/\\].[/\\]*|*[/\\]..[/\\]*|*[/\\].|*[/\\]..) GRAPHIFY_PY= ;; /*|[A-Za-z]:[/\\]*) ;; *) GRAPHIFY_PY= ;; esac
+_gdir="$(CDPATH= cd -P "${GRAPHIFY_PY%[/\\]*}/" 2>/dev/null && pwd -P)"
+_gchk="$(printf '|%s/' "$GRAPHIFY_PY" "$_gdir" "$(realpath "$GRAPHIFY_PY" 2>/dev/null)" | tr 'A-Z\\' 'a-z/')"
+for _gd in "$PWD" "$(pwd -P)" "$(git rev-parse --show-toplevel 2>/dev/null)"; do _gd="$(printf '%s' "$_gd" | tr 'A-Z\\' 'a-z/')"; [ -n "$_gd" ] && case "$_gchk" in *"|$_gd"/*) GRAPHIFY_PY= ;; esac; done
+[ -n "$_gdir" ] && [ -f "$GRAPHIFY_PY" ] && [ -x "$GRAPHIFY_PY" ] || { GRAPHIFY_PY=; echo "graphify: refusing graphify-out/.graphify_python - it must name an absolute Python outside this project; rerun the interpreter guard" >&2; }
 mkdir -p graphify-out
-$(cat graphify-out/.graphify_python) -c "
+"${GRAPHIFY_PY:?}" -c "
 import sys, json
 from graphify.build import build_from_json
 from graphify.cluster import cluster, score_all
@@ -474,7 +543,13 @@ Replace INPUT_PATH with the actual path.
 A non-destructive diagnostic on the extraction, before labeling. It surfaces edge collapse, dangling/missing endpoints, and self-loops — the silent-corruption modes of incremental updates and AST/LLM id mismatches. Read-only; never aborts.
 
 ```bash
-$(cat graphify-out/.graphify_python) -c "
+GRAPHIFY_PY="$(cat graphify-out/.graphify_python)"
+case "$GRAPHIFY_PY" in //*|/proc/*|/dev/*|*~*|*[/\\].[/\\]*|*[/\\]..[/\\]*|*[/\\].|*[/\\]..) GRAPHIFY_PY= ;; /*|[A-Za-z]:[/\\]*) ;; *) GRAPHIFY_PY= ;; esac
+_gdir="$(CDPATH= cd -P "${GRAPHIFY_PY%[/\\]*}/" 2>/dev/null && pwd -P)"
+_gchk="$(printf '|%s/' "$GRAPHIFY_PY" "$_gdir" "$(realpath "$GRAPHIFY_PY" 2>/dev/null)" | tr 'A-Z\\' 'a-z/')"
+for _gd in "$PWD" "$(pwd -P)" "$(git rev-parse --show-toplevel 2>/dev/null)"; do _gd="$(printf '%s' "$_gd" | tr 'A-Z\\' 'a-z/')"; [ -n "$_gd" ] && case "$_gchk" in *"|$_gd"/*) GRAPHIFY_PY= ;; esac; done
+[ -n "$_gdir" ] && [ -f "$GRAPHIFY_PY" ] && [ -x "$GRAPHIFY_PY" ] || { GRAPHIFY_PY=; echo "graphify: refusing graphify-out/.graphify_python - it must name an absolute Python outside this project; rerun the interpreter guard" >&2; }
+"${GRAPHIFY_PY:?}" -c "
 import json
 from pathlib import Path
 from graphify.diagnostics import diagnose_extraction, format_diagnostic_report
@@ -502,7 +577,13 @@ Read `graphify-out/.graphify_analysis.json`. For each community key, look at its
 Then regenerate the report and save the labels for the visualizer:
 
 ```bash
-$(cat graphify-out/.graphify_python) -c "
+GRAPHIFY_PY="$(cat graphify-out/.graphify_python)"
+case "$GRAPHIFY_PY" in //*|/proc/*|/dev/*|*~*|*[/\\].[/\\]*|*[/\\]..[/\\]*|*[/\\].|*[/\\]..) GRAPHIFY_PY= ;; /*|[A-Za-z]:[/\\]*) ;; *) GRAPHIFY_PY= ;; esac
+_gdir="$(CDPATH= cd -P "${GRAPHIFY_PY%[/\\]*}/" 2>/dev/null && pwd -P)"
+_gchk="$(printf '|%s/' "$GRAPHIFY_PY" "$_gdir" "$(realpath "$GRAPHIFY_PY" 2>/dev/null)" | tr 'A-Z\\' 'a-z/')"
+for _gd in "$PWD" "$(pwd -P)" "$(git rev-parse --show-toplevel 2>/dev/null)"; do _gd="$(printf '%s' "$_gd" | tr 'A-Z\\' 'a-z/')"; [ -n "$_gd" ] && case "$_gchk" in *"|$_gd"/*) GRAPHIFY_PY= ;; esac; done
+[ -n "$_gdir" ] && [ -f "$GRAPHIFY_PY" ] && [ -x "$GRAPHIFY_PY" ] || { GRAPHIFY_PY=; echo "graphify: refusing graphify-out/.graphify_python - it must name an absolute Python outside this project; rerun the interpreter guard" >&2; }
+"${GRAPHIFY_PY:?}" -c "
 import sys, json
 from graphify.build import build_from_json
 from graphify.cluster import score_all
@@ -565,7 +646,13 @@ These run only when their flag is present (`--wiki`, `--neo4j`/`--neo4j-push`, `
 ### Step 9 - Save manifest, update cost tracker, clean up, and report
 
 ```bash
-$(cat graphify-out/.graphify_python) -c "
+GRAPHIFY_PY="$(cat graphify-out/.graphify_python)"
+case "$GRAPHIFY_PY" in //*|/proc/*|/dev/*|*~*|*[/\\].[/\\]*|*[/\\]..[/\\]*|*[/\\].|*[/\\]..) GRAPHIFY_PY= ;; /*|[A-Za-z]:[/\\]*) ;; *) GRAPHIFY_PY= ;; esac
+_gdir="$(CDPATH= cd -P "${GRAPHIFY_PY%[/\\]*}/" 2>/dev/null && pwd -P)"
+_gchk="$(printf '|%s/' "$GRAPHIFY_PY" "$_gdir" "$(realpath "$GRAPHIFY_PY" 2>/dev/null)" | tr 'A-Z\\' 'a-z/')"
+for _gd in "$PWD" "$(pwd -P)" "$(git rev-parse --show-toplevel 2>/dev/null)"; do _gd="$(printf '%s' "$_gd" | tr 'A-Z\\' 'a-z/')"; [ -n "$_gd" ] && case "$_gchk" in *"|$_gd"/*) GRAPHIFY_PY= ;; esac; done
+[ -n "$_gdir" ] && [ -f "$GRAPHIFY_PY" ] && [ -x "$GRAPHIFY_PY" ] || { GRAPHIFY_PY=; echo "graphify: refusing graphify-out/.graphify_python - it must name an absolute Python outside this project; rerun the interpreter guard" >&2; }
+"${GRAPHIFY_PY:?}" -c "
 import json
 from pathlib import Path
 from datetime import datetime, timezone
@@ -644,10 +731,21 @@ The graph is the map. Your job after the pipeline is to be the guide.
 
 ## Interpreter guard for subcommands
 
-Before running any subcommand below (`--update`, `--cluster-only`, `query`, `path`, `explain`, `add`), check that `.graphify_python` exists. If it's missing (e.g. user deleted `graphify-out/`), re-resolve the interpreter first:
+Before running any subcommand below (`--update`, `--cluster-only`, `query`, `path`, `explain`, `add`), check that `.graphify_python` exists and names an absolute interpreter outside this project. If it's missing (e.g. user deleted `graphify-out/`) or fails that check (e.g. the file came from the repository), re-resolve the interpreter first. The guard never runs the stored path:
 
 ```bash
 if [ ! -f graphify-out/.graphify_python ]; then
+    GRAPHIFY_PY=
+else
+    IFS= read -r GRAPHIFY_PY < graphify-out/.graphify_python
+fi
+case "$GRAPHIFY_PY" in //*|/proc/*|/dev/*|*~*|*[/\\].[/\\]*|*[/\\]..[/\\]*|*[/\\].|*[/\\]..) GRAPHIFY_PY= ;; /*|[A-Za-z]:[/\\]*) ;; *) GRAPHIFY_PY= ;; esac
+_gdir="$(CDPATH= cd -P "${GRAPHIFY_PY%[/\\]*}/" 2>/dev/null && pwd -P)"
+_gchk="$(printf '|%s/' "$GRAPHIFY_PY" "$_gdir" "$(realpath "$GRAPHIFY_PY" 2>/dev/null)" | tr 'A-Z\\' 'a-z/')"
+for _gd in "$PWD" "$(pwd -P)" "$(git rev-parse --show-toplevel 2>/dev/null)"; do _gd="$(printf '%s' "$_gd" | tr 'A-Z\\' 'a-z/')"; [ -n "$_gd" ] && case "$_gchk" in *"|$_gd"/*) GRAPHIFY_PY= ;; esac; done
+[ -n "$_gdir" ] && [ -f "$GRAPHIFY_PY" ] && [ -x "$GRAPHIFY_PY" ] || GRAPHIFY_PY=
+if [ -z "$GRAPHIFY_PY" ]; then
+    [ -f graphify-out/.graphify_python ] && echo "graphify: replacing graphify-out/.graphify_python - it did not name an absolute Python outside this project" >&2
     GRAPHIFY_BIN=$(which graphify 2>/dev/null)
     if [ -n "$GRAPHIFY_BIN" ]; then
         PYTHON=$(head -1 "$GRAPHIFY_BIN" | tr -d '#!')
@@ -656,6 +754,7 @@ if [ ! -f graphify-out/.graphify_python ]; then
         PYTHON="python3"
     fi
     mkdir -p graphify-out
+    rm -f graphify-out/.graphify_python
     "$PYTHON" -c "import sys; open('graphify-out/.graphify_python', 'w', encoding='utf-8').write(sys.executable)"
 fi
 ```

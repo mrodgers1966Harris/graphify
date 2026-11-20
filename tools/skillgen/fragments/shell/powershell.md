@@ -58,4 +58,19 @@ $GRAPHIFY_PYTHON | Out-File -FilePath graphify-out\.graphify_python -Encoding ut
 
 If the import succeeds, print nothing and move straight to Step 2.
 
-**In every subsequent block, run Python through the saved interpreter — `& (Get-Content graphify-out\.graphify_python)` in place of a bare `python3` — so every step uses the interpreter that actually has graphify.**
+**In every subsequent block, run Python through the checked interpreter so every step uses the interpreter that actually has graphify. The bash blocks below start with the interpreter check and call `"${GRAPHIFY_PY:?}"`; keep those lines when you run them. When you run a step in PowerShell instead, start it with the check below and call `& $GRAPHIFY_PY` in place of a bare `python3`. Never run the contents of `graphify-out\.graphify_python` unchecked: a cloned repository can ship that file, and the check refuses relative paths and anything inside this project or its git work tree.**
+
+```powershell
+$GRAPHIFY_PY = "$(Get-Content -Raw -LiteralPath graphify-out\.graphify_python -ErrorAction SilentlyContinue)".Trim()
+try {
+    $_gok = ($GRAPHIFY_PY -match '^([A-Za-z]:[\\/]|/(?![\\/]))') -and ($GRAPHIFY_PY -notmatch '~|^/(proc|dev)/|(^|[\\/])\.\.?([\\/]|$)') -and (Test-Path -LiteralPath $GRAPHIFY_PY -PathType Leaf)
+    $_gi = Get-Item -LiteralPath $GRAPHIFY_PY -Force; $_gpaths = @($_gi.FullName)
+    if ($_gi.LinkType) { $_gpaths += $(if ($_gi.PSObject.Methods['ResolveLinkTarget']) { $_gi.ResolveLinkTarget($true).FullName } else { [IO.Path]::GetFullPath([IO.Path]::Combine($_gi.DirectoryName, "$($_gi.Target)")) }) }
+    $_groots = @((Get-Location).ProviderPath) + @(if (Get-Command git -ErrorAction SilentlyContinue) { git rev-parse --show-toplevel 2>$null }) | Where-Object { $_ } | ForEach-Object { ([IO.Path]::GetFullPath($_) -replace '\\', '/').TrimEnd('/') + '/' }
+    foreach ($_gp in $_gpaths) {
+        for ($_ga = $(if ($_gp -eq $_gpaths[0]) { Split-Path -Parent $_gp } else { $_gp }); $_ga; $_ga = Split-Path -Parent $_ga) { if ((Get-Item -LiteralPath $_ga -Force).LinkType) { $_gok = $false } }
+        foreach ($_gr in $_groots) { if (($_gp -replace '\\', '/').StartsWith($_gr, [StringComparison]::OrdinalIgnoreCase)) { $_gok = $false } }
+    }
+} catch { $_gok = $false }
+if (-not $_gok) { $GRAPHIFY_PY = $null; Write-Error "graphify: refusing graphify-out\.graphify_python - it must name an absolute Python outside this project; rerun the interpreter guard" }
+```

@@ -877,6 +877,28 @@ def _is_shebang_allowlist_fix_line(line: str) -> bool:
     return "[!a-zA-Z0-9/_." in line
 
 
+def _is_interpreter_check_fix_line(line: str) -> bool:
+    """Whether a line is part of the saved-interpreter check.
+
+    Every block used to execute ``$(cat graphify-out/.graphify_python)`` as the
+    program, and the subcommand guard kept that file whenever it existed. A
+    cloned repository can ship the file pointing at an executable in its own
+    tree. Each block now reads the file once into ``GRAPHIFY_PY``, refuses any
+    value that is not an absolute executable outside the project and its git
+    work tree, and runs only ``"${GRAPHIFY_PY:?}"``; the guard re-resolves a
+    value that fails the same check. Both the old (removed) and new (added)
+    lines match here, including the guard's added ``else``/``fi``.
+    """
+    s = line.strip()
+    return (
+        "$(cat graphify-out/.graphify_python)" in line
+        or "GRAPHIFY_PY" in line
+        or s in ("else", "fi", "rm -f graphify-out/.graphify_python")
+        or "replacing graphify-out/.graphify_python" in line
+        or (s.startswith("Before running any subcommand below") and ".graphify_python" in line)
+    )
+
+
 # Every line that may differ between a rendered monolith and its pristine v8
 # baseline. Each predicate documents one sanctioned change-class; a blank line is
 # allowed because the multi-line fix blocks insert spacing. Anything else failing
@@ -892,6 +914,7 @@ _SANCTIONED_MONOLITH_DIFFS = (
     _is_manifest_root_fix_line,
     _is_no_api_key_fix_line,
     _is_shebang_allowlist_fix_line,
+    _is_interpreter_check_fix_line,
 )
 
 

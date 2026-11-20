@@ -37,6 +37,8 @@ if [ -n "$_PINNED" ] && [ -x "$_PINNED" ] && "$_PINNED" -c "$_GFY_PROBE" 2>/dev/
 fi
 # Second probe: read graphify-out/.graphify_python (written by the skill and
 # CLI; survives uv-tool reinstalls and is the same source the README documents).
+# A cloned repository can ship this file, so only an absolute interpreter that
+# resolves outside the work tree is ever run.
 if [ -z "$GRAPHIFY_PYTHON" ]; then
     _GFY_PYTHON_FILE="graphify-out/.graphify_python"
     if [ -f "$_GFY_PYTHON_FILE" ]; then
@@ -44,6 +46,18 @@ if [ -z "$GRAPHIFY_PYTHON" ]; then
         case "$_FROM_FILE" in
             *[!a-zA-Z0-9/_.@:\\-]*) _FROM_FILE="" ;;  # allowlist (covers Windows paths)
         esac
+        case "$_FROM_FILE" in
+            //*|/proc/*|/dev/*|*[/\\\\].[/\\\\]*|*[/\\\\]..[/\\\\]*|*[/\\\\].|*[/\\\\]..) _FROM_FILE="" ;;
+            /*|[A-Za-z]:[/\\\\]*) ;;
+            *) _FROM_FILE="" ;;
+        esac
+        _GFY_DIR=$(CDPATH= cd -P "${_FROM_FILE%[/\\\\]*}/" 2>/dev/null && pwd -P)
+        _GFY_CHK=$(printf '|%s/' "$_FROM_FILE" "$_GFY_DIR" "$(realpath "$_FROM_FILE" 2>/dev/null)" | tr 'A-Z\\\\' 'a-z/')
+        for _GFY_ROOT in "$PWD" "$(pwd -P)" "$(git rev-parse --show-toplevel 2>/dev/null)"; do
+            _GFY_ROOT=$(printf '%s' "$_GFY_ROOT" | tr 'A-Z\\\\' 'a-z/')
+            [ -n "$_GFY_ROOT" ] && case "$_GFY_CHK" in *"|$_GFY_ROOT"/*) _FROM_FILE="" ;; esac
+        done
+        [ -n "$_GFY_DIR" ] && [ -f "$_FROM_FILE" ] || _FROM_FILE=""
         if [ -n "$_FROM_FILE" ] && [ -x "$_FROM_FILE" ] && "$_FROM_FILE" -c "$_GFY_PROBE" 2>/dev/null; then
             GRAPHIFY_PYTHON="$_FROM_FILE"
         fi
