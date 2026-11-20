@@ -117,7 +117,7 @@ if not changed:
 print(f'[graphify hook] {len(changed)} file(s) changed - rebuilding graph...')
 
 try:
-    from graphify.watch import _rebuild_code, _apply_resource_limits
+    from graphify.watch import _rebuild_code, _apply_resource_limits, _confine_scan_root
     _apply_resource_limits()
     _timeout = int(os.environ.get('GRAPHIFY_REBUILD_TIMEOUT', '600'))
     if _timeout > 0 and hasattr(signal, 'SIGALRM'):
@@ -130,8 +130,12 @@ try:
     if _saved.exists():
         _txt = _saved.read_text(encoding='utf-8').strip()
         if _txt:
-            _root = Path(_txt)
-    _rebuild_code(_root, changed_paths=changed, force=_force)
+            _bound = _confine_scan_root(Path(_txt))
+            if _bound is None:
+                print(f'[graphify hook] ignoring {_saved}: {_txt!r} is outside the repository')
+            else:
+                _root = _bound
+    _rebuild_code(_root, changed_paths=changed, force=_force, confine_to_cwd=False)
     # Refresh the work-memory lessons doc when saved Q&A outcomes exist
     # (best-effort; never fails the hook).
     try:
@@ -152,7 +156,7 @@ except Exception as exc:
 """
 
 _REBUILD_BODY_CHECKOUT = """\
-from graphify.watch import _rebuild_code, _apply_resource_limits
+from graphify.watch import _rebuild_code, _apply_resource_limits, _confine_scan_root
 from pathlib import Path
 import os, signal, sys
 try:
@@ -171,8 +175,12 @@ try:
     if _saved.exists():
         _txt = _saved.read_text(encoding='utf-8').strip()
         if _txt:
-            _root = Path(_txt)
-    _rebuild_code(_root, force=_force)
+            _bound = _confine_scan_root(Path(_txt))
+            if _bound is None:
+                print(f'[graphify] ignoring {_saved}: {_txt!r} is outside the repository')
+            else:
+                _root = _bound
+    _rebuild_code(_root, force=_force, confine_to_cwd=False)
     # Refresh the work-memory lessons doc when saved Q&A outcomes exist
     # (best-effort; never fails the hook).
     try:
