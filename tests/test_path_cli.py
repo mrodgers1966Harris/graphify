@@ -4,6 +4,7 @@ import json
 import networkx as nx
 from networkx.readwrite import json_graph
 import graphify.__main__ as mainmod
+from graphify.security import fence_label as F
 
 
 def _write_graph(tmp_path):
@@ -37,12 +38,12 @@ def test_forward_arrow(monkeypatch, tmp_path, capsys):
     p = _write_graph(tmp_path)
     out = _run(monkeypatch, p, "createPatchHandler", "validateSanitySession", capsys)
     assert "Shortest path (1 hops):" in out
-    assert "createPatchHandler() --calls [EXTRACTED]--> validateSanitySession()" in out
+    assert f"{F('createPatchHandler()')} --calls [EXTRACTED]--> {F('validateSanitySession()')}" in out
 
 
 def test_reverse_arrow(monkeypatch, tmp_path, capsys):
     p = _write_graph(tmp_path)
     out = _run(monkeypatch, p, "validateSanitySession", "createPatchHandler", capsys)
     assert "Shortest path (1 hops):" in out
-    assert "validateSanitySession() <--calls [EXTRACTED]-- createPatchHandler()" in out
-    assert "validateSanitySession() --calls [EXTRACTED]--> createPatchHandler()" not in out
+    assert f"{F('validateSanitySession()')} <--calls [EXTRACTED]-- {F('createPatchHandler()')}" in out
+    assert f"{F('validateSanitySession()')} --calls [EXTRACTED]--> {F('createPatchHandler()')}" not in out

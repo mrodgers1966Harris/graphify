@@ -3141,9 +3141,10 @@ def main() -> None:
         # shortest path is trivially zero hops, which is almost never what the
         # caller wanted (see bug #828).
         if src_nid == tgt_nid:
+            from graphify.security import fence_label as _fl
             print(
                 f"'{source_label}' and '{target_label}' both resolved to the same "
-                f"node '{src_nid}'. Use a more specific label or the exact node ID.",
+                f"node {_fl(src_nid)}. Use a more specific label or the exact node ID.",
                 file=sys.stderr,
             )
             sys.exit(1)
@@ -3162,27 +3163,8 @@ def main() -> None:
             print(f"No path found between '{source_label}' and '{target_label}'.")
             sys.exit(0)
         hops = len(path_nodes) - 1
-        segments = []
-        from graphify.build import edge_data
-        for i in range(len(path_nodes) - 1):
-            u, v = path_nodes[i], path_nodes[i + 1]
-            # Check which direction the stored edge points.
-            if G.has_edge(u, v):
-                edata = edge_data(G, u, v)
-                forward = True
-            else:
-                edata = edge_data(G, v, u)
-                forward = False
-            rel = edata.get("relation", "")
-            conf = edata.get("confidence", "")
-            conf_str = f" [{conf}]" if conf else ""
-            if i == 0:
-                segments.append(G.nodes[u].get("label", u))
-            if forward:
-                segments.append(f"--{rel}{conf_str}--> {G.nodes[v].get('label', v)}")
-            else:
-                segments.append(f"<--{rel}{conf_str}-- {G.nodes[v].get('label', v)}")
-        print(f"Shortest path ({hops} hops):\n  " + " ".join(segments))
+        from graphify.serve import _path_to_text
+        print(f"Shortest path ({hops} hops):\n  " + _path_to_text(G, path_nodes))
         from graphify import querylog
         querylog.log_query(
             kind="path",
@@ -3224,13 +3206,15 @@ def main() -> None:
             sys.exit(0)
         nid = matches[0]
         d = G.nodes[nid]
-        print(f"Node: {d.get('label', nid)}")
-        print(f"  ID:        {nid}")
+        from graphify.security import fence_field as _ff, fence_label as _fl
+        from graphify.serve import _community_field
+        print(f"Node: {_fl(d.get('label', nid))}")
+        print(f"  ID:        {_fl(nid)}")
         print(
-            f"  Source:    {d.get('source_file', '')} {d.get('source_location', '')}".rstrip()
+            f"  Source:    {_ff(d.get('source_file', ''))} {_ff(d.get('source_location', ''))}".rstrip()
         )
-        print(f"  Type:      {d.get('file_type', '')}")
-        print(f"  Community: {d.get('community_name') or d.get('community', '')}")
+        print(f"  Type:      {_ff(d.get('file_type', ''))}")
+        print(f"  Community: {_community_field(d)}")
         # Work-memory overlay: a derived experiential hint from `graphify reflect`,
         # merged in display-only from the .graphify_learning.json sidecar next to
         # graph.json. No line when the node has no overlay entry.
@@ -3269,7 +3253,7 @@ def main() -> None:
                 rel = edata.get("relation", "")
                 conf = edata.get("confidence", "")
                 arrow = "-->" if direction == "out" else "<--"
-                print(f"  {arrow} {G.nodes[nb].get('label', nb)} [{rel}] [{conf}]")
+                print(f"  {arrow} {_fl(G.nodes[nb].get('label', nb))} [{_ff(rel)}] [{_ff(conf)}]")
             if len(connections) > 20:
                 print(f"  ... and {len(connections) - 20} more")
         from graphify import querylog

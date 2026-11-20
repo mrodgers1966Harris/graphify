@@ -7,9 +7,10 @@ from urllib.parse import quote
 import networkx as nx
 
 from graphify.build import edge_data
+from graphify.security import fence_field, fence_label, label_filename_base, node_is_name_like
 
 
-def _safe_filename(name: str) -> str:
+def _safe_filename(name: str, *, name_like: bool = False) -> str:
     """Make a label safe for use as a filename across platforms.
 
     Substitutes characters that Windows reserves in filenames
@@ -18,7 +19,8 @@ def _safe_filename(name: str) -> str:
     chars to stay well under common filesystem limits.
     """
     import re
-    s = name.replace("/", "-").replace(" ", "_").replace(":", "-")
+    s = label_filename_base(name, name_like=name_like)
+    s = s.replace("/", "-").replace(" ", "_").replace(":", "-")
     s = re.sub(r'[<>:"/\\|?*]', '_', s)
     s = s.strip('. ')
     return s[:200] if s else 'unnamed'
@@ -41,7 +43,7 @@ def _md_link(label: str, resolver: dict[str, str]) -> str:
     god nodes get article files — render as plain text instead of a dead link
     that points nowhere even inside Obsidian.
     """
-    text = label.replace("[", r"\[").replace("]", r"\]")
+    text = fence_label(label).replace("[", r"\[").replace("]", r"\]")
     slug = resolver.get(label)
     if slug is None:
         return text
@@ -84,7 +86,7 @@ def _community_article(
     sources = sorted({G.nodes[n].get("source_file") or "" for n in nodes} - {""})
 
     lines: list[str] = []
-    lines += [f"# {label}", ""]
+    lines += [f"# {fence_label(label)}", ""]
 
     meta_parts = [f"{len(nodes)} nodes"]
     if cohesion is not None:
@@ -97,8 +99,8 @@ def _community_article(
         node_label = d.get("label", nid)
         src = d.get("source_file", "")
         degree = G.degree(nid)
-        src_str = f" — `{src}`" if src else ""
-        lines.append(f"- **{node_label}** ({degree} connections){src_str}")
+        src_str = f" — `{fence_field(src)}`" if src else ""
+        lines.append(f"- **{fence_label(node_label)}** ({degree} connections){src_str}")
     remaining = len(nodes) - len(top_nodes)
     if remaining > 0:
         lines.append(f"- *... and {remaining} more nodes in this community*")
@@ -115,7 +117,7 @@ def _community_article(
     if sources:
         lines += ["## Source Files", ""]
         for src in sources[:20]:
-            lines.append(f"- `{src}`")
+            lines.append(f"- `{fence_field(src)}`")
         lines.append("")
 
     lines += ["## Audit Trail", ""]
@@ -125,7 +127,7 @@ def _community_article(
         lines.append(f"- {conf}: {n} ({pct}%)")
     lines.append("")
 
-    lines += ["---", "", f"*Part of the graphify knowledge wiki. See {_md_link('index', resolver)} to navigate.*"]
+    lines += ["---", "", f"*Part of the graphify knowledge wiki. See [index](index.md) to navigate.*"]
     return "\n".join(lines)
 
 
@@ -138,8 +140,8 @@ def _god_node_article(G: nx.Graph, nid: str, labels: dict[int, str], node_commun
     community_name = labels.get(cid, f"Community {cid}") if cid is not None else None
 
     lines: list[str] = []
-    lines += [f"# {node_label}", ""]
-    lines += [f"> God node · {G.degree(nid)} connections · `{src}`", ""]
+    lines += [f"# {fence_label(node_label)}", ""]
+    lines += [f"> God node · {G.degree(nid)} connections · `{fence_field(src)}`", ""]
 
     if community_name:
         lines += [f"**Community:** {_md_link(community_name, resolver)}", ""]
@@ -152,17 +154,17 @@ def _god_node_article(G: nx.Graph, nid: str, labels: dict[int, str], node_commun
         rel = ed.get("relation", "related")
         neighbor_label = nd.get("label", neighbor)
         conf = ed.get("confidence", "")
-        conf_str = f" `{conf}`" if conf else ""
+        conf_str = f" `{fence_field(conf)}`" if conf else ""
         by_relation.setdefault(rel, []).append(f"{_md_link(neighbor_label, resolver)}{conf_str}")
 
     lines += ["## Connections by Relation", ""]
     for rel, targets in sorted(by_relation.items()):
-        lines.append(f"### {rel}")
+        lines.append(f"### {fence_field(rel)}")
         for t in targets[:20]:
             lines.append(f"- {t}")
         lines.append("")
 
-    lines += ["---", "", f"*Part of the graphify knowledge wiki. See {_md_link('index', resolver)} to navigate.*"]
+    lines += ["---", "", f"*Part of the graphify knowledge wiki. See [index](index.md) to navigate.*"]
     return "\n".join(lines)
 
 
@@ -312,7 +314,7 @@ def to_wiki(
     for node_data in god_nodes_data:
         nid = node_data.get("id")
         if nid and nid in G:
-            slug = _unique_slug(_safe_filename(node_data['label']))
+            slug = _unique_slug(_safe_filename(node_data['label'], name_like=node_is_name_like(G.nodes[nid])))
             god_articles.append((nid, slug))
             resolver.setdefault(node_data['label'], slug)
 

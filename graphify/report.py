@@ -4,9 +4,12 @@ import re
 from datetime import date
 import networkx as nx
 
+from graphify.security import fence_field, fence_label, label_filename_base
+
 
 def _safe_community_name(label: str) -> str:
     """Mirrors export.safe_name so community hub filenames and report wikilinks always agree."""
+    label = label_filename_base(label)
     cleaned = re.sub(r'[\\/*?:"<>|#^[\]]', "", label.replace("\r\n", " ").replace("\r", " ").replace("\n", " ")).strip()
     cleaned = re.sub(r"\.(md|mdx|markdown)$", "", cleaned, flags=re.IGNORECASE)
     return cleaned or "unnamed"
@@ -58,12 +61,12 @@ def _learning_section(lines: list, learning: dict | None, top_n: int = 10) -> No
         for nid, e in preferred[:top_n]:
             label = e.get("label") or nid
             stale = " _(code changed — re-verify)_" if e.get("stale") else ""
-            lines.append(f"- `{label}` ({e.get('uses', 0)}× useful, "
+            lines.append(f"- `{fence_label(label)}` ({e.get('uses', 0)}× useful, "
                          f"score={e.get('score', 0)}){stale}")
     if dead_ends:
         lines += ["", "**Known dead ends** — questions that led nowhere; don't re-derive."]
         for d in dead_ends:
-            nodes = ", ".join(f"`{n}`" for n in d.get("nodes", []))
+            nodes = ", ".join(f"`{fence_label(n)}`" for n in d.get("nodes", []))
             lines.append(f"- \"{d.get('question', '')}\""
                          + (f" -> {nodes}" if nodes else ""))
 
@@ -147,14 +150,14 @@ def generate(
         for cid in non_empty:
             label = community_labels.get(cid, f"Community {cid}")
             safe = _safe_community_name(label)
-            lines.append(f"- [[_COMMUNITY_{safe}|{label}]]")
+            lines.append(f"- [[_COMMUNITY_{safe}|{fence_label(label)}]]")
 
     lines += [
         "",
         "## God Nodes (most connected - your core abstractions)",
     ]
     for i, node in enumerate(god_node_list, 1):
-        lines.append(f"{i}. `{node['label']}` - {node['degree']} edges")
+        lines.append(f"{i}. `{fence_label(node['label'])}` - {node['degree']} edges")
 
     lines += ["", "## Surprising Connections (you probably didn't know these)"]
     if surprise_list:
@@ -167,11 +170,12 @@ def generate(
             if conf == "INFERRED" and cscore is not None:
                 conf_tag = f"INFERRED {cscore:.2f}"
             else:
-                conf_tag = conf
+                conf_tag = fence_field(conf)
             sem_tag = " [semantically similar]" if relation == "semantically_similar_to" else ""
             lines += [
-                f"- `{s['source']}` --{relation}--> `{s['target']}`  [{conf_tag}]{sem_tag}",
-                f"  {files[0]} → {files[1]}" + (f"  _{note}_" if note else ""),
+                f"- `{fence_label(s['source'])}` --{fence_field(relation)}--> "
+                f"`{fence_label(s['target'])}`  [{conf_tag}]{sem_tag}",
+                f"  {fence_field(files[0])} → {fence_field(files[1])}" + (f"  _{note}_" if note else ""),
             ]
     else:
         lines.append("- None detected - all connections are within the same source files.")
@@ -196,7 +200,7 @@ def generate(
                 length = c.get("length", len(cycle))
                 if not cycle:
                     continue
-                cycle_path = " -> ".join(cycle + [cycle[0]])
+                cycle_path = " -> ".join(fence_field(f) for f in cycle + [cycle[0]])
                 lines.append(f"- {length}-file cycle: `{cycle_path}`")
         else:
             lines.append("- None detected.")
@@ -205,11 +209,11 @@ def generate(
     if hyperedges:
         lines += ["", "## Hyperedges (group relationships)"]
         for h in hyperedges:
-            node_labels = ", ".join(h.get("nodes", []))
-            conf = h.get("confidence", "INFERRED")
+            node_labels = ", ".join(fence_label(n) for n in h.get("nodes", []))
+            conf = fence_field(h.get("confidence", "INFERRED"))
             cscore = h.get("confidence_score")
             conf_tag = f"{conf} {cscore:.2f}" if cscore is not None else conf
-            lines.append(f"- **{h.get('label', h.get('id', ''))}** — {node_labels} [{conf_tag}]")
+            lines.append(f"- **{fence_label(h.get('label', h.get('id', '')))}** — {node_labels} [{conf_tag}]")
 
     lines += ["", f"## Communities ({len(communities)} total, {thin_count_summary} thin omitted)"]
     for cid, nodes in communities.items():
@@ -221,11 +225,11 @@ def generate(
             continue
         if len(real_nodes) < min_community_size:
             continue
-        display = [G.nodes[n].get("label", n) for n in real_nodes[:8]]
+        display = [fence_label(G.nodes[n].get("label", n)) for n in real_nodes[:8]]
         suffix = f" (+{len(real_nodes)-8} more)" if len(real_nodes) > 8 else ""
         lines += [
             "",
-            f"### Community {cid} - \"{label}\"",
+            f"### Community {cid} - \"{fence_label(label)}\"",
             f"Cohesion: {score:.2f}",
             f"Nodes ({len(real_nodes)}): {', '.join(display)}{suffix}",
         ]
@@ -234,11 +238,11 @@ def generate(
     if ambiguous:
         lines += ["", "## Ambiguous Edges - Review These"]
         for u, v, d in ambiguous:
-            ul = G.nodes[u].get("label", u)
-            vl = G.nodes[v].get("label", v)
+            ul = fence_label(G.nodes[u].get("label", u))
+            vl = fence_label(G.nodes[v].get("label", v))
             lines += [
                 f"- `{ul}` → `{vl}`  [AMBIGUOUS]",
-                f"  {d.get('source_file', '')} · relation: {d.get('relation', 'unknown')}",
+                f"  {fence_field(d.get('source_file', ''))} · relation: {fence_field(d.get('relation', 'unknown'))}",
             ]
 
     # --- Gaps section ---
@@ -260,7 +264,7 @@ def generate(
     if gap_count > 0 or amb_pct > 20:
         lines += ["", "## Knowledge Gaps"]
         if isolated:
-            isolated_labels = [G.nodes[n].get("label", n) for n in isolated[:5]]
+            isolated_labels = [fence_label(G.nodes[n].get("label", n)) for n in isolated[:5]]
             suffix = f" (+{len(isolated)-5} more)" if len(isolated) > 5 else ""
             lines.append(f"- **{len(isolated)} isolated node(s):** {', '.join(f'`{l}`' for l in isolated_labels)}{suffix}")
             lines.append("  These have ≤1 connection - possible missing edges or undocumented components.")

@@ -56,7 +56,7 @@ def test_canvas_dangling_community_member_does_not_crash(tmp_path):
     with KeyError in to_canvas on a dangling member. The same guard now applies
     to both the box-sizing loop and the card-layout loop."""
     import json
-    from graphify.export import to_canvas
+    from graphify.export import _canvas_node_id, to_canvas
 
     G, comms = _graph_with_dangling_member()
     out = tmp_path / "graph.canvas"
@@ -66,5 +66,5 @@ def test_canvas_dangling_community_member_does_not_crash(tmp_path):
     canvas = json.loads(out.read_text(encoding="utf-8"))
     node_ids = {n.get("id") for n in canvas.get("nodes", [])}
     # real members get cards; the dangling id does not
-    assert "n_n0" in node_ids and "n_n1" in node_ids
-    assert "n_agents_doc" not in node_ids
+    assert _canvas_node_id("n0") in node_ids and _canvas_node_id("n1") in node_ids
+    assert _canvas_node_id("agents_doc") not in node_ids

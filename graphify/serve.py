@@ -8,7 +8,7 @@ from array import array
 from pathlib import Path
 import networkx as nx
 from networkx.readwrite import json_graph
-from graphify.security import sanitize_label, check_graph_file_size_cap
+from graphify.security import sanitize_label, check_graph_file_size_cap, fence_field, fence_label
 from graphify.build import edge_data
 from graphify.paths import default_graph_json as _default_graph_json
 
@@ -561,6 +561,13 @@ def _dfs(G: nx.Graph, start_nodes: list[str], depth: int) -> tuple[set[str], lis
     return visited, edges_seen
 
 
+def _community_field(d: dict) -> str:
+    name = d.get("community_name")
+    if name:
+        return fence_label(name)
+    return fence_field(d.get("community", ""))
+
+
 def _subgraph_to_text(G: nx.Graph, nodes: set[str], edges: list[tuple], token_budget: int = 2000, *, seeds: list[str] | None = None) -> str:
     """Render subgraph as text, cutting at token_budget (approx 3 chars/token).
 
@@ -591,10 +598,10 @@ def _subgraph_to_text(G: nx.Graph, nodes: set[str], edges: list[tuple], token_bu
             if status:
                 learning_suffix = f" learning={status}{':stale' if entry.get('stale') else ''}"
         line = (
-            f"NODE {sanitize_label(d.get('label', nid))} "
-            f"[src={sanitize_label(str(d.get('source_file', '')))} "
-            f"loc={sanitize_label(str(d.get('source_location', '')))} "
-            f"community={sanitize_label(str(d.get('community_name') or d.get('community', '')))}"
+            f"NODE {fence_label(d.get('label', nid))} "
+            f"[src={fence_field(d.get('source_file', ''))} "
+            f"loc={fence_field(d.get('source_location', ''))} "
+            f"community={_community_field(d)}"
             f"{learning_suffix}]"
         )
         lines.append(line)
@@ -603,12 +610,12 @@ def _subgraph_to_text(G: nx.Graph, nodes: set[str], edges: list[tuple], token_bu
             raw = G[u][v]
             d = next(iter(raw.values()), {}) if isinstance(G, (nx.MultiGraph, nx.MultiDiGraph)) else raw
             context = d.get("context")
-            context_suffix = f" context={sanitize_label(str(context))}" if context else ""
+            context_suffix = f" context={fence_field(context)}" if context else ""
             line = (
-                f"EDGE {sanitize_label(G.nodes[u].get('label', u))} "
-                f"--{sanitize_label(str(d.get('relation', '')))} "
-                f"[{sanitize_label(str(d.get('confidence', '')))}{context_suffix}]--> "
-                f"{sanitize_label(G.nodes[v].get('label', v))}"
+                f"EDGE {fence_label(G.nodes[u].get('label', u))} "
+                f"--{fence_field(d.get('relation', ''))} "
+                f"[{fence_field(d.get('confidence', ''))}{context_suffix}]--> "
+                f"{fence_label(G.nodes[v].get('label', v))}"
             )
             lines.append(line)
     output = "\n".join(lines)
@@ -645,13 +652,41 @@ def _query_graph_text(
     nodes, edges = _dfs(traversal_graph, start_nodes, depth) if mode == "dfs" else _bfs(traversal_graph, start_nodes, depth)
     header_parts = [
         f"Traversal: {mode.upper()} depth={depth}",
-        f"Start: {[G.nodes[n].get('label', n) for n in start_nodes]}",
+        f"Start: [{', '.join(fence_label(G.nodes[n].get('label', n)) for n in start_nodes)}]",
     ]
     if resolved_filters:
         header_parts.append(f"Context: {', '.join(resolved_filters)} ({filter_source})")
     header_parts.append(f"{len(nodes)} nodes found")
     header = " | ".join(header_parts) + "\n\n"
     return header + _subgraph_to_text(traversal_graph, nodes, edges, token_budget)
+
+
+def _path_to_text(G: nx.Graph, path_nodes: list[str]) -> str:
+    """Render a node path as ``A --rel [CONF]--> B <--rel-- C`` with fenced labels.
+
+    Edge direction follows the stored edge, so a directed graph shows the real
+    caller→callee orientation even though the path was found undirected.
+    """
+    segments: list[str] = []
+    for i in range(len(path_nodes) - 1):
+        u, v = path_nodes[i], path_nodes[i + 1]
+        if G.has_edge(u, v):
+            edata = edge_data(G, u, v)
+            forward = True
+        else:
+            edata = edge_data(G, v, u)
+            forward = False
+        rel = fence_field(edata.get("relation", ""))
+        conf = fence_field(edata.get("confidence", ""))
+        conf_str = f" [{conf}]" if conf else ""
+        if i == 0:
+            segments.append(fence_label(G.nodes[u].get("label", u)))
+        target = fence_label(G.nodes[v].get("label", v))
+        if forward:
+            segments.append(f"--{rel}{conf_str}--> {target}")
+        else:
+            segments.append(f"<--{rel}{conf_str}-- {target}")
+    return " ".join(segments)
 
 
 def _find_node(G: nx.Graph, label: str) -> list[str]:
@@ -751,7 +786,7 @@ def _community_header(cid: int, community_name) -> str:
     if community_name:
         clean = sanitize_label(str(community_name))
         if clean and clean != base:
-            return f"{base} — {clean}"
+            return f"{base} — {fence_label(clean)}"
     return base
 
 
@@ -1018,13 +1053,13 @@ def _build_server(graph_path: str):
         if not matches:
             return f"No node matching '{label}' found."
         nid, d = matches[0]
-        # Sanitise every LLM-derived field before concatenation (F-010).
+        # Fence every repository-derived field before concatenation (F-010).
         return "\n".join([
-            f"Node: {sanitize_label(d.get('label', nid))}",
-            f"  ID: {sanitize_label(nid)}",
-            f"  Source: {sanitize_label(str(d.get('source_file', '')))} {sanitize_label(str(d.get('source_location', '')))}",
-            f"  Type: {sanitize_label(str(d.get('file_type', '')))}",
-            f"  Community: {sanitize_label(str(d.get('community_name') or d.get('community', '')))}",
+            f"Node: {fence_label(d.get('label', nid))}",
+            f"  ID: {fence_label(nid)}",
+            f"  Source: {fence_field(d.get('source_file', ''))} {fence_field(d.get('source_location', ''))}",
+            f"  Type: {fence_field(d.get('file_type', ''))}",
+            f"  Community: {_community_field(d)}",
             f"  Degree: {G.degree(nid)}",
         ])
 
@@ -1035,15 +1070,15 @@ def _build_server(graph_path: str):
         if not matches:
             return f"No node matching '{label}' found."
         nid = matches[0]
-        lines = [f"Neighbors of {sanitize_label(G.nodes[nid].get('label', nid))}:"]
+        lines = [f"Neighbors of {fence_label(G.nodes[nid].get('label', nid))}:"]
         for nb in G.successors(nid):
             d = edge_data(G, nid, nb)
             rel = d.get("relation", "")
             if rel_filter and rel_filter not in rel.lower():
                 continue
             lines.append(
-                f"  --> {sanitize_label(G.nodes[nb].get('label', nb))} "
-                f"[{sanitize_label(str(rel))}] [{sanitize_label(str(d.get('confidence', '')))}]"
+                f"  --> {fence_label(G.nodes[nb].get('label', nb))} "
+                f"[{fence_field(rel)}] [{fence_field(d.get('confidence', ''))}]"
             )
         for nb in G.predecessors(nid):
             d = edge_data(G, nb, nid)
@@ -1051,8 +1086,8 @@ def _build_server(graph_path: str):
             if rel_filter and rel_filter not in rel.lower():
                 continue
             lines.append(
-                f"  <-- {sanitize_label(G.nodes[nb].get('label', nb))} "
-                f"[{sanitize_label(str(rel))}] [{sanitize_label(str(d.get('confidence', '')))}]"
+                f"  <-- {fence_label(G.nodes[nb].get('label', nb))} "
+                f"[{fence_field(rel)}] [{fence_field(d.get('confidence', ''))}]"
             )
         return "\n".join(lines)
 
@@ -1065,10 +1100,10 @@ def _build_server(graph_path: str):
         lines = [f"{header} ({len(nodes)} nodes):"]
         for n in nodes:
             d = G.nodes[n]
-            # Sanitise label and source_file (F-010).
+            # Fence label and source_file (F-010).
             lines.append(
-                f"  {sanitize_label(d.get('label', n))} "
-                f"[{sanitize_label(str(d.get('source_file', '')))}]"
+                f"  {fence_label(d.get('label', n))} "
+                f"[{fence_field(d.get('source_file', ''))}]"
             )
         return "\n".join(lines)
 
@@ -1076,7 +1111,7 @@ def _build_server(graph_path: str):
         from graphify.analyze import god_nodes as _god_nodes
         nodes = _god_nodes(G, top_n=int(arguments.get("top_n", 10)))
         lines = ["God nodes (most connected):"]
-        lines += [f"  {i}. {n['label']} - {n['degree']} edges" for i, n in enumerate(nodes, 1)]
+        lines += [f"  {i}. {fence_label(n['label'])} - {n['degree']} edges" for i, n in enumerate(nodes, 1)]
         return "\n".join(lines)
 
     def _tool_graph_stats(_: dict) -> str:
@@ -1105,7 +1140,7 @@ def _build_server(graph_path: str):
         if src_nid == tgt_nid:
             return (
                 f"'{arguments['source']}' and '{arguments['target']}' both resolved to "
-                f"the same node '{src_nid}'. Use a more specific label or the exact node ID."
+                f"the same node {fence_label(src_nid)}. Use a more specific label or the exact node ID."
             )
         warnings: list[str] = []
         for name, scored in (("source", src_scored), ("target", tgt_scored)):
@@ -1121,30 +1156,15 @@ def _build_server(graph_path: str):
             # Use undirected view for path-finding (works regardless of query src/tgt order)
             path_nodes = nx.shortest_path(G.to_undirected(as_view=True), src_nid, tgt_nid)
         except (nx.NetworkXNoPath, nx.NodeNotFound):
-            return f"No path found between '{G.nodes[src_nid].get('label', src_nid)}' and '{G.nodes[tgt_nid].get('label', tgt_nid)}'."
+            return (
+                f"No path found between {fence_label(G.nodes[src_nid].get('label', src_nid))} "
+                f"and {fence_label(G.nodes[tgt_nid].get('label', tgt_nid))}."
+            )
         hops = len(path_nodes) - 1
         if hops > max_hops:
             return f"Path exceeds max_hops={max_hops} ({hops} hops found)."
-        segments = []
-        for i in range(len(path_nodes) - 1):
-            u, v = path_nodes[i], path_nodes[i + 1]
-            if G.has_edge(u, v):
-                edata = edge_data(G, u, v)
-                forward = True
-            else:
-                edata = edge_data(G, v, u)
-                forward = False
-            rel = edata.get("relation", "")
-            conf = edata.get("confidence", "")
-            conf_str = f" [{conf}]" if conf else ""
-            if i == 0:
-                segments.append(G.nodes[u].get("label", u))
-            if forward:
-                segments.append(f"--{rel}{conf_str}--> {G.nodes[v].get('label', v)}")
-            else:
-                segments.append(f"<--{rel}{conf_str}-- {G.nodes[v].get('label', v)}")
         prefix = ("\n".join(warnings) + "\n") if warnings else ""
-        return prefix + f"Shortest path ({hops} hops):\n  " + " ".join(segments)
+        return prefix + f"Shortest path ({hops} hops):\n  " + _path_to_text(G, path_nodes)
 
     def _tool_list_prs(arguments: dict) -> str:
         from graphify.prs import fetch_prs, fetch_worktrees, format_prs_text, _detect_default_branch
@@ -1285,7 +1305,10 @@ def _build_server(graph_path: str):
                     return "No surprising connections found."
                 lines = ["Surprising cross-community connections:"]
                 for s in surprises:
-                    lines.append(f"  {s.get('source', '')} <-> {s.get('target', '')} [{s.get('relation', '')}]")
+                    lines.append(
+                        f"  {fence_label(s.get('source', ''))} <-> {fence_label(s.get('target', ''))} "
+                        f"[{fence_field(s.get('relation', ''))}]"
+                    )
                 return "\n".join(lines)
             except Exception as exc:
                 return f"Could not compute surprising connections: {exc}"

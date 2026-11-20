@@ -13,7 +13,7 @@ from datetime import date
 from pathlib import Path
 import networkx as nx
 from networkx.readwrite import json_graph
-from graphify.security import sanitize_label
+from graphify.security import fence_field, fence_label, label_filename_base, node_is_name_like, sanitize_label
 from graphify.analyze import _node_community_map
 from graphify.build import edge_data
 
@@ -101,6 +101,11 @@ def _obsidian_tag(name: str) -> str:
     Spaces become underscores; everything else is stripped.
     """
     return re.sub(r"[^a-zA-Z0-9_\-/]", "", name.replace(" ", "_"))
+
+
+def _community_tag(name: str) -> str:
+    """Obsidian tag for a community; built like a filename so free text never lands in it."""
+    return _obsidian_tag(label_filename_base(name))
 
 
 def _strip_diacritics(text: str | None) -> str:
@@ -899,7 +904,7 @@ def _dedup_node_filenames(G: nx.Graph, safe_name) -> dict[str, str]:
     node_filenames: dict[str, str] = {}
     used: set[str] = set()
     for node_id, data in G.nodes(data=True):
-        base = safe_name(data.get("label", node_id))
+        base = safe_name(data.get("label", node_id), name_like=node_is_name_like(data))
         candidate = base
         n = 1
         while candidate.lower() in used:
@@ -956,7 +961,8 @@ def to_obsidian(
 
     # Map node_id → safe filename so wikilinks stay consistent.
     # Deduplicate: if two nodes produce the same filename, append a numeric suffix.
-    def safe_name(label: str) -> str:
+    def safe_name(label: str, name_like: bool = False) -> str:
+        label = label_filename_base(label, name_like=name_like)
         cleaned = re.sub(r'[\\/*?:"<>|#^[\]]', "", label.replace("\r\n", " ").replace("\r", " ").replace("\n", " ")).strip()
         # Strip trailing .md/.mdx/.markdown so "CLAUDE.md" doesn't become "CLAUDE.md.md"
         cleaned = re.sub(r"\.(md|mdx|qmd|markdown)$", "", cleaned, flags=re.IGNORECASE)
@@ -1004,7 +1010,7 @@ def to_obsidian(
         ftype_tag = _FTYPE_TAG.get(ftype, f"graphify/{ftype}" if ftype else "graphify/document")
         dom_conf = _dominant_confidence(node_id)
         conf_tag = f"graphify/{dom_conf}"
-        comm_tag = f"community/{_obsidian_tag(community_name)}"
+        comm_tag = f"community/{_community_tag(community_name)}"
         node_tags = [ftype_tag, conf_tag, comm_tag]
 
         lines: list[str] = []
@@ -1014,17 +1020,17 @@ def to_obsidian(
         # community label cannot break out and inject sibling keys (F-009).
         lines += [
             "---",
-            f'source_file: "{_yaml_str(data.get("source_file", ""))}"',
+            f'source_file: "{_yaml_str(fence_field(data.get("source_file", "")))}"',
             f'type: "{_yaml_str(ftype)}"',
-            f'community: "{_yaml_str(community_name)}"',
+            f'community: "{_yaml_str(fence_label(community_name))}"',
         ]
         if data.get("source_location"):
-            lines.append(f'location: "{_yaml_str(str(data["source_location"]))}"')
+            lines.append(f'location: "{_yaml_str(fence_field(data["source_location"]))}"')
         # Add tags list to frontmatter
         lines.append("tags:")
         for tag in node_tags:
             lines.append(f"  - {tag}")
-        lines += ["---", "", f"# {label}", ""]
+        lines += ["---", "", f"# {fence_label(label)}", ""]
 
         # Outgoing edges as wikilinks
         neighbors = list(G.neighbors(node_id))
@@ -1035,7 +1041,7 @@ def to_obsidian(
                 neighbor_label = node_filename[neighbor]
                 relation = edata.get("relation", "")
                 confidence = edata.get("confidence", "EXTRACTED")
-                lines.append(f"- [[{neighbor_label}]] - `{relation}` [{confidence}]")
+                lines.append(f"- [[{neighbor_label}]] - `{fence_field(relation)}` [{fence_field(confidence)}]")
             lines.append("")
 
         # Inline tags at bottom of note body (for Obsidian tag panel)
@@ -1115,7 +1121,7 @@ def to_obsidian(
         lines.append(f"members: {n_members}")
         lines.append("---")
         lines.append("")
-        lines.append(f"# {community_name}")
+        lines.append(f"# {fence_label(community_name)}")
         lines.append("")
 
         # Cohesion + member count summary
@@ -1138,14 +1144,14 @@ def to_obsidian(
             source = data.get("source_file", "")
             entry = f"- [[{node_label}]]"
             if ftype:
-                entry += f" - {ftype}"
+                entry += f" - {fence_field(ftype)}"
             if source:
-                entry += f" - {source}"
+                entry += f" - {fence_field(source)}"
             lines.append(entry)
         lines.append("")
 
         # Dataview live query (improvement 2)
-        comm_tag_name = _obsidian_tag(community_name)
+        comm_tag_name = _community_tag(community_name)
         lines.append("## Live Query (requires Dataview plugin)")
         lines.append("")
         lines.append("```dataview")
@@ -1191,7 +1197,7 @@ def to_obsidian(
     graph_config = {
         "colorGroups": [
             {
-                "query": f"tag:#community/{label.replace(' ', '_')}",
+                "query": f"tag:#community/{_community_tag(label)}",
                 "color": {"a": 1, "rgb": int(COMMUNITY_COLORS[cid % len(COMMUNITY_COLORS)].lstrip('#'), 16)}
             }
             for cid, label in sorted((community_labels or {}).items())
@@ -1219,6 +1225,11 @@ def to_obsidian(
     return node_notes_written + community_notes_written
 
 
+def _canvas_node_id(node_id: str) -> str:
+    # Node ids are slugs of labels; canvas ids only need to be unique and stable.
+    return "n_" + hashlib.sha1(str(node_id).encode("utf-8")).hexdigest()[:16]  # nosec - not security
+
+
 def to_canvas(
     G: nx.Graph,
     communities: dict[int, list[str]],
@@ -1235,7 +1246,8 @@ def to_canvas(
     # Obsidian canvas color codes (cycle through for communities)
     CANVAS_COLORS = ["1", "2", "3", "4", "5", "6"]  # red, orange, yellow, green, cyan, purple
 
-    def safe_name(label: str) -> str:
+    def safe_name(label: str, name_like: bool = False) -> str:
+        label = label_filename_base(label, name_like=name_like)
         cleaned = re.sub(r'[\\/*?:"<>|#^[\]]', "", label.replace("\r\n", " ").replace("\r", " ").replace("\n", " ")).strip()
         cleaned = re.sub(r"\.(md|mdx|qmd|markdown)$", "", cleaned, flags=re.IGNORECASE)
         # A stem of only punctuation (e.g. "@", "*", "#") survives the unsafe-char
@@ -1343,7 +1355,7 @@ def to_canvas(
         canvas_nodes.append({
             "id": f"g{cid}",
             "type": "group",
-            "label": community_name,
+            "label": fence_label(community_name),
             "x": gx,
             "y": gy,
             "width": gw,
@@ -1363,9 +1375,12 @@ def to_canvas(
             row = m_idx // inner_cols
             nx_x = gx + 20 + col * (180 + 20)
             nx_y = gy + 80 + row * (60 + 20)
-            fname = node_filenames.get(node_id, safe_name(G.nodes[node_id].get("label", node_id)))
+            fname = node_filenames.get(
+                node_id,
+                safe_name(G.nodes[node_id].get("label", node_id), name_like=node_is_name_like(G.nodes[node_id])),
+            )
             canvas_nodes.append({
-                "id": f"n_{node_id}",
+                "id": _canvas_node_id(node_id),
                 "type": "file",
                 "file": f"{fname}.md",
                 "x": nx_x,
@@ -1381,15 +1396,15 @@ def to_canvas(
             weight = edata.get("weight", 1.0)
             relation = edata.get("relation", "")
             conf = edata.get("confidence", "EXTRACTED")
-            label = f"{relation} [{conf}]" if relation else f"[{conf}]"
+            label = f"{fence_field(relation)} [{fence_field(conf)}]" if relation else f"[{fence_field(conf)}]"
             all_edges_weighted.append((weight, u, v, label))
 
     all_edges_weighted.sort(key=lambda x: -x[0])
     for weight, u, v, label in all_edges_weighted[:200]:
         canvas_edges.append({
-            "id": f"e_{u}_{v}",
-            "fromNode": f"n_{u}",
-            "toNode": f"n_{v}",
+            "id": f"e_{_canvas_node_id(u)[2:]}_{_canvas_node_id(v)[2:]}",
+            "fromNode": _canvas_node_id(u),
+            "toNode": _canvas_node_id(v),
             "label": label,
         })
 

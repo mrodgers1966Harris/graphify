@@ -48,6 +48,19 @@ _RECURSION_LIMIT = 10_000
 # See issue #726.
 
 
+# Labels copied from free text (markdown headings, unresolved import specifiers)
+# share the 80-character cap docstring/NOTE rationale labels already use, so a
+# repository file cannot park a long paragraph in a node label.
+_MAX_FREE_TEXT_LABEL = 80
+_LABEL_BREAK_RE = re.compile(r"[\r\n\t]+")
+_LABEL_CONTROL_RE = re.compile(r"[\x00-\x1f\x7f]")
+
+
+def _free_text_label(text: str) -> str:
+    text = _LABEL_CONTROL_RE.sub("", _LABEL_BREAK_RE.sub(" ", text)).strip()
+    return text[:_MAX_FREE_TEXT_LABEL].rstrip()
+
+
 def _raise_recursion_limit() -> None:
     if sys.getrecursionlimit() < _RECURSION_LIMIT:
         sys.setrecursionlimit(_RECURSION_LIMIT)
@@ -6022,7 +6035,7 @@ def extract_svelte(path: Path) -> dict:
                     if not module_name:
                         continue
                     node_id = _make_id(module_name)
-                    stub_source_file = raw
+                    stub_source_file = _free_text_label(raw)
             if node_id in existing_ids:
                 # Edge target already a real node - just add the edge, don't add a node.
                 result.setdefault("edges", []).append({
@@ -6032,7 +6045,7 @@ def extract_svelte(path: Path) -> dict:
                 })
                 continue
             result.setdefault("nodes", []).append({
-                "id": node_id, "label": raw,
+                "id": node_id, "label": _free_text_label(raw),
                 "file_type": "code", "source_file": stub_source_file,
                 "confidence": "EXTRACTED",
             })
@@ -6077,7 +6090,7 @@ def extract_svelte(path: Path) -> dict:
                         if not module_name:
                             continue
                         node_id = _make_id(module_name)
-                        stub_source_file = raw
+                        stub_source_file = _free_text_label(raw)
                 if node_id in existing_ids:
                     result.setdefault("edges", []).append({
                         "source": file_node_id, "target": node_id,
@@ -6086,7 +6099,7 @@ def extract_svelte(path: Path) -> dict:
                     })
                     continue
                 result.setdefault("nodes", []).append({
-                    "id": node_id, "label": raw,
+                    "id": node_id, "label": _free_text_label(raw),
                     "file_type": "code", "source_file": stub_source_file,
                     "confidence": "EXTRACTED",
                 })
@@ -6143,7 +6156,7 @@ def extract_astro(path: Path) -> dict:
                     if not module_name:
                         continue
                     node_id = _make_id(module_name)
-                    stub_source_file = raw
+                    stub_source_file = _free_text_label(raw)
             if node_id in existing_ids:
                 result.setdefault("edges", []).append({
                     "source": file_node_id, "target": node_id,
@@ -6152,7 +6165,7 @@ def extract_astro(path: Path) -> dict:
                 })
                 continue
             result.setdefault("nodes", []).append({
-                "id": node_id, "label": raw,
+                "id": node_id, "label": _free_text_label(raw),
                 "file_type": "code", "source_file": stub_source_file,
                 "confidence": "EXTRACTED",
             })
@@ -6203,7 +6216,7 @@ def extract_astro(path: Path) -> dict:
                         if not module_name:
                             continue
                         node_id = _make_id(module_name)
-                        stub_source_file = raw
+                        stub_source_file = _free_text_label(raw)
                 if node_id in existing_ids:
                     result.setdefault("edges", []).append({
                         "source": file_node_id, "target": node_id,
@@ -6212,7 +6225,7 @@ def extract_astro(path: Path) -> dict:
                     })
                     continue
                 result.setdefault("nodes", []).append({
-                    "id": node_id, "label": raw,
+                    "id": node_id, "label": _free_text_label(raw),
                     "file_type": "code", "source_file": stub_source_file,
                     "confidence": "EXTRACTED",
                 })
@@ -6315,7 +6328,7 @@ def extract_vue(path: Path) -> dict:
                     if not module_name:
                         continue
                     node_id = _make_id(module_name)
-                    stub_source_file = raw
+                    stub_source_file = _free_text_label(raw)
             if node_id in existing_ids:
                 result.setdefault("edges", []).append({
                     "source": file_node_id, "target": node_id,
@@ -6324,7 +6337,7 @@ def extract_vue(path: Path) -> dict:
                 })
                 continue
             result.setdefault("nodes", []).append({
-                "id": node_id, "label": raw,
+                "id": node_id, "label": _free_text_label(raw),
                 "file_type": "code", "source_file": stub_source_file,
                 "confidence": "EXTRACTED",
             })
@@ -12950,7 +12963,9 @@ def extract_markdown(path: Path) -> dict:
         heading_match = re.match(r'^(#{1,6})\s+(.+)', line_text)
         if heading_match:
             level = len(heading_match.group(1))
-            title = heading_match.group(2).strip()
+            title = _free_text_label(heading_match.group(2))
+            if not title:
+                continue
             h_nid = _make_id(stem, title)
             # Avoid duplicate heading IDs by appending line number
             if h_nid in seen_ids:

@@ -877,6 +877,37 @@ def _is_shebang_allowlist_fix_line(line: str) -> bool:
     return "[!a-zA-Z0-9/_." in line
 
 
+def _is_untrusted_label_rule_line(line: str) -> bool:
+    """Whether a line carries the untrusted-node-label rule.
+
+    Node labels come from repository content, and graphify fences them in
+    ``<<untrusted-label>>`` markers wherever an agent reads them back. The two
+    lines that tell the agent to answer from graph output or paste report
+    sections now end with the rule not to follow instructions found in labels.
+    The inline NetworkX fallbacks for query/path/explain and the update diff
+    printout render labels the same way the CLI does, through ``fence_label`` /
+    ``fence_field``. Both the old
+    (removed) and new (added) forms of those lines match here.
+    """
+    s = line.strip()
+    return (
+        "4. Answer using **only** what the graph contains." in line
+        or "Do NOT paste the full report - just those three sections." in line
+        or s == "from graphify.security import fence_field as FF, fence_label as F"
+        or s.startswith("lines = [f'Traversal: {mode.upper()} | Start: ")
+        or s.startswith("lines.append(f'  NODE {")
+        or s.startswith("lines.append(f'  EDGE {")
+        or s in ("label = G.nodes[nid].get('label', nid)", "label = F(G.nodes[nid].get('label', nid))")
+        or s.startswith("print(f'  {label} --{")
+        or s.startswith("print(f'NODE: {")
+        or s.startswith("print(f'  source: {")
+        or s.startswith("nlabel = ")
+        or s.startswith("print(f'  --{")
+        or s == "from graphify.security import fence_label"
+        or s.startswith("print('New nodes:', ")
+    )
+
+
 # Every line that may differ between a rendered monolith and its pristine v8
 # baseline. Each predicate documents one sanctioned change-class; a blank line is
 # allowed because the multi-line fix blocks insert spacing. Anything else failing
@@ -892,6 +923,7 @@ _SANCTIONED_MONOLITH_DIFFS = (
     _is_manifest_root_fix_line,
     _is_no_api_key_fix_line,
     _is_shebang_allowlist_fix_line,
+    _is_untrusted_label_rule_line,
 )
 
 
