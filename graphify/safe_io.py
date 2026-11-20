@@ -15,6 +15,10 @@ name. ``rename`` replaces a symlink at the destination instead of following it.
 Paths outside the output root (e.g. ``--out ~/Desktop/graph.html``) are the
 user's choice: their parent directory is opened as given, and only the final
 name is protected.
+
+Platforms without ``dir_fd`` support (Windows) apply the same rules by path:
+linked directories under the output root are replaced, and content goes to a
+``mkstemp`` file that ``os.replace`` moves over the final name.
 """
 from __future__ import annotations
 
@@ -113,6 +117,27 @@ def _open_dir(directory: str | os.PathLike[str]) -> int:
     return fd
 
 
+def _is_link(path: str) -> bool:
+    isjunction = getattr(os.path, "isjunction", None)
+    return os.path.islink(path) or bool(isjunction and isjunction(path))
+
+
+def _makedirs_by_path(directory: str | os.PathLike[str]) -> None:
+    """Fallback for platforms without ``dir_fd`` (Windows): same layout rules, by path."""
+    anchor, components = _split_at_out_root(os.path.abspath(os.fspath(directory)))
+    os.makedirs(anchor, exist_ok=True)
+    current = anchor
+    for component in components:
+        current = os.path.join(current, component)
+        if _is_link(current):
+            try:
+                os.unlink(current)
+            except (IsADirectoryError, PermissionError):
+                os.rmdir(current)
+        with contextlib.suppress(FileExistsError):
+            os.mkdir(current)
+
+
 def ensure_dir(directory: str | os.PathLike[str]) -> None:
     """Create ``directory`` (like ``mkdir(parents=True, exist_ok=True)``).
 
@@ -120,7 +145,7 @@ def ensure_dir(directory: str | os.PathLike[str]) -> None:
     replaced by a real directory rather than followed.
     """
     if not _HAVE_DIR_FD:
-        os.makedirs(directory, exist_ok=True)
+        _makedirs_by_path(directory)
         return
     os.close(_open_dir(directory))
 
@@ -136,7 +161,7 @@ def _bind_parent(path: str | os.PathLike[str]) -> tuple[int, str]:
 def _write_via_rename(path: str | os.PathLike[str], write) -> None:
     if not _HAVE_DIR_FD:
         parent = os.path.dirname(os.path.abspath(os.fspath(path)))
-        os.makedirs(parent, exist_ok=True)
+        _makedirs_by_path(parent)
         fd, tmp = tempfile.mkstemp(dir=parent, prefix=".graphify-", suffix=".tmp")
         try:
             write(fd)
@@ -194,7 +219,9 @@ def write_text(
 
 def _open_nofollow(path: str | os.PathLike[str], flags: int) -> int:
     if not _HAVE_DIR_FD:
-        os.makedirs(os.path.dirname(os.path.abspath(os.fspath(path))), exist_ok=True)
+        _makedirs_by_path(os.path.dirname(os.path.abspath(os.fspath(path))))
+        if _is_link(os.fspath(path)):
+            os.unlink(path)
         return os.open(path, flags | _O_CLOEXEC, 0o666)
     dir_fd, name = _bind_parent(path)
     try:
