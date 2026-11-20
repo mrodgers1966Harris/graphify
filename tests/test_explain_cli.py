@@ -2,6 +2,7 @@
 from __future__ import annotations
 import json
 import graphify.__main__ as mainmod
+from graphify.security import fence_label as F
 
 
 def _write_graph(tmp_path):
@@ -42,17 +43,17 @@ def _run(monkeypatch, graph_path, label, capsys):
 def test_callee_shows_callers_as_inbound(monkeypatch, tmp_path, capsys):
     p = _write_graph(tmp_path)
     out = _run(monkeypatch, p, "validateSanitySession", capsys)
-    assert "<-- createPatchHandler() [calls]" in out
-    assert "<-- createEditHandler() [calls]" in out
-    assert "--> stableStringify() [calls]" in out
-    assert "--> createPatchHandler() [calls]" not in out
-    assert "--> createEditHandler() [calls]" not in out
+    assert f"<-- {F('createPatchHandler()')} [calls]" in out
+    assert f"<-- {F('createEditHandler()')} [calls]" in out
+    assert f"--> {F('stableStringify()')} [calls]" in out
+    assert f"--> {F('createPatchHandler()')} [calls]" not in out
+    assert f"--> {F('createEditHandler()')} [calls]" not in out
 
 
 def test_caller_shows_callee_as_outbound(monkeypatch, tmp_path, capsys):
     p = _write_graph(tmp_path)
     out = _run(monkeypatch, p, "createPatchHandler", capsys)
-    assert "--> validateSanitySession() [calls]" in out
+    assert f"--> {F('validateSanitySession()')} [calls]" in out
     assert "<-- " not in out
 
 
@@ -76,10 +77,10 @@ def test_explain_source_file_path_prefers_file_level_node(monkeypatch, tmp_path,
 
     out = _run(monkeypatch, p, source_file, capsys)
 
-    assert "Node: route.ts" in out
-    assert "ID:        example_route" in out
+    assert f"Node: {F('route.ts')}" in out
+    assert f"ID:        {F('example_route')}" in out
     assert f"Source:    {source_file} L1" in out
-    assert "Node: GET()" not in out
+    assert f"Node: {F('GET()')}" not in out
 
 
 # --- work-memory overlay Lesson line ------------------------------------------

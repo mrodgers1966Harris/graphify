@@ -4,6 +4,7 @@ from pathlib import Path
 import networkx as nx
 
 from graphify.build import edge_data
+from graphify.security import fence_field, fence_label
 
 # Builtin/mock names that can appear as annotation-derived nodes in pre-existing
 # graphs. Excluded from god-node ranking so they don't displace real abstractions
@@ -260,7 +261,7 @@ def _surprise_score(
         score += 1
         peripheral = G.nodes[u].get("label", u) if deg_u <= 2 else G.nodes[v].get("label", v)
         hub = G.nodes[v].get("label", v) if deg_u <= 2 else G.nodes[u].get("label", u)
-        reasons.append(f"peripheral node `{peripheral}` unexpectedly reaches hub `{hub}`")
+        reasons.append(f"peripheral node `{fence_label(peripheral)}` unexpectedly reaches hub `{fence_label(hub)}`")
 
     return score, reasons
 
@@ -441,8 +442,8 @@ def suggest_questions(
             relation = data.get("relation", "related to")
             questions.append({
                 "type": "ambiguous_edge",
-                "question": f"What is the exact relationship between `{ul}` and `{vl}`?",
-                "why": f"Edge tagged AMBIGUOUS (relation: {relation}) - confidence is low.",
+                "question": f"What is the exact relationship between `{fence_label(ul)}` and `{fence_label(vl)}`?",
+                "why": f"Edge tagged AMBIGUOUS (relation: {fence_field(relation)}) - confidence is low.",
             })
 
     # 2. Bridge nodes (high betweenness) → cross-cutting concern questions
@@ -466,7 +467,10 @@ def suggest_questions(
                 other_labels = [community_labels.get(c, f"Community {c}") for c in neighbor_comms]
                 questions.append({
                     "type": "bridge_node",
-                    "question": f"Why does `{label}` connect `{comm_label}` to {', '.join(f'`{l}`' for l in other_labels)}?",
+                    "question": (
+                        f"Why does `{fence_label(label)}` connect `{fence_label(comm_label)}` to "
+                        f"{', '.join(f'`{fence_label(l)}`' for l in other_labels)}?"
+                    ),
                     "why": f"High betweenness centrality ({score:.3f}) - this node is a cross-community bridge.",
                 })
 
@@ -497,8 +501,11 @@ def suggest_questions(
                 others.append(G.nodes[other_id].get("label", other_id))
             questions.append({
                 "type": "verify_inferred",
-                "question": f"Are the {len(inferred)} inferred relationships involving `{label}` (e.g. with `{others[0]}` and `{others[1]}`) actually correct?",
-                "why": f"`{label}` has {len(inferred)} INFERRED edges - model-reasoned connections that need verification.",
+                "question": (
+                    f"Are the {len(inferred)} inferred relationships involving `{fence_label(label)}` "
+                    f"(e.g. with `{fence_label(others[0])}` and `{fence_label(others[1])}`) actually correct?"
+                ),
+                "why": f"`{fence_label(label)}` has {len(inferred)} INFERRED edges - model-reasoned connections that need verification.",
             })
 
     # 4. Isolated or weakly-connected nodes → exploration questions
@@ -510,7 +517,7 @@ def suggest_questions(
         labels = [G.nodes[n].get("label", n) for n in isolated[:3]]
         questions.append({
             "type": "isolated_nodes",
-            "question": f"What connects {', '.join(f'`{l}`' for l in labels)} to the rest of the system?",
+            "question": f"What connects {', '.join(f'`{fence_label(l)}`' for l in labels)} to the rest of the system?",
             "why": f"{len(isolated)} weakly-connected nodes found - possible documentation gaps or missing edges.",
         })
 
@@ -522,7 +529,7 @@ def suggest_questions(
             label = community_labels.get(cid, f"Community {cid}")
             questions.append({
                 "type": "low_cohesion",
-                "question": f"Should `{label}` be split into smaller, more focused modules?",
+                "question": f"Should `{fence_label(label)}` be split into smaller, more focused modules?",
                 "why": f"Cohesion score {score} - nodes in this community are weakly interconnected.",
             })
 

@@ -27,6 +27,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from graphify.security import fence_label
+
 if TYPE_CHECKING:
     import networkx as nx
 
@@ -512,7 +514,7 @@ def render_conflicts(
     for comm, ps in sorted(conflicts.items(), key=lambda x: -len(x[1])):
         comm_label_str = ""
         if comm in labels and labels[comm]:
-            comm_label_str = dim("  — " + ", ".join(labels[comm]))
+            comm_label_str = dim("  — " + ", ".join(fence_label(l) for l in labels[comm]))
         print(f"  {yellow(f'Community {comm}')}{comm_label_str}  ({len(ps)} PRs overlap)")
         for pr in ps:
             print(f"    #{pr.number:4}  {_pad(_status_color(pr.status), 13)}  {_truncate(pr.title, 55)}")

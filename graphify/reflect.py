@@ -36,6 +36,7 @@ from typing import Any
 
 from graphify.ingest import OUTCOMES
 from graphify.paths import GRAPHIFY_OUT_NAME
+from graphify.security import fence_label
 
 _UNCATEGORIZED = "Uncategorized"
 
@@ -452,13 +453,13 @@ def _render_bucket(out: list[str], data: dict[str, Any], k: int) -> None:
         out += [f"**Preferred sources** — corroborated by ≥{k} useful results; "
                 "start here.", ""]
         for e in preferred:
-            out.append(f"- `{e['node']}` ({e['n']}× useful)")
+            out.append(f"- `{fence_label(e['node'])}` ({e['n']}× useful)")
         out.append("")
     if tentative:
         out += [f"**Tentative** — useful in fewer than {k} results; verify before "
                 "relying.", ""]
         for e in tentative:
-            out.append(f"- `{e['node']}` ({e['n']}× useful)")
+            out.append(f"- `{fence_label(e['node'])}` ({e['n']}× useful)")
         out.append("")
     if contested:
         out += ["**Contested** — mixed signals; recency decides.", ""]
@@ -467,14 +468,14 @@ def _render_bucket(out: list[str], data: dict[str, Any], k: int) -> None:
             verdict = ("evenly split" if e["verdict"] == "even"
                        else f"recency leans **{e['verdict']}**")
             out.append(
-                f"- `{e['node']}` — {e['pos']}× useful, {e['neg']}× "
+                f"- `{fence_label(e['node'])}` — {e['pos']}× useful, {e['neg']}× "
                 f"dead end/corrected → {verdict}"
                 + (f" (latest {day})" if day else ""))
         out.append("")
     if dead_ends:
         out += ["**Known dead ends** — led nowhere; don't re-derive.", ""]
         for d in dead_ends:
-            nodes = ", ".join(f"`{n}`" for n in d["nodes"])
+            nodes = ", ".join(f"`{fence_label(n)}`" for n in d["nodes"])
             out.append(f"- \"{d['question']}\"" + (f" — {nodes}" if nodes else ""))
         out.append("")
     if corrections:
@@ -514,7 +515,7 @@ def render_lessons_md(agg: dict[str, Any]) -> str:
         def _topic_key(label: str) -> tuple[int, str]:
             return (1 if label == _UNCATEGORIZED else 0, label)
         for label in sorted(agg["by_community"], key=_topic_key):
-            out += [f"### {label}", ""]
+            out += [f"### {label if label == _UNCATEGORIZED else fence_label(label)}", ""]
             _render_bucket(out, agg["by_community"][label], k)
 
     # Single trailing newline, no trailing whitespace lines.

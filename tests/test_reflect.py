@@ -20,6 +20,7 @@ from pathlib import Path
 import pytest
 
 from graphify.ingest import save_query_result
+from graphify.security import fence_label as F
 from graphify.reflect import (
     aggregate_lessons,
     lessons_fresh,
@@ -345,7 +346,7 @@ def test_render_has_summary_and_sections():
     md = render_lessons_md(aggregate_lessons(docs))
     assert "# Lessons" in md
     assert "1 useful · 1 dead ends · 1 corrected" in md
-    assert "`AuthMiddleware`" in md
+    assert f"`{F('AuthMiddleware')}`" in md
     assert "where is the cache?" in md
     assert "bcrypt" in md
     # No graph -> no per-topic section.
@@ -356,7 +357,7 @@ def test_render_includes_by_topic_when_graph_present():
     node_community = {"A": "Auth"}
     md = render_lessons_md(aggregate_lessons([_doc("useful", ["A"])], node_community))
     assert "## By topic" in md
-    assert "### Auth" in md
+    assert f"### {F('Auth')}" in md
 
 
 def test_topic_sections_alpha_with_uncategorized_last():
@@ -365,7 +366,7 @@ def test_topic_sections_alpha_with_uncategorized_last():
     docs = [_doc("useful", ["a"]), _doc("useful", ["b"]), _doc("useful", ["unknown"])]
     md = render_lessons_md(aggregate_lessons(docs, nc))
     headers = [line[4:] for line in md.splitlines() if line.startswith("### ")]
-    assert headers == ["Alpha", "Zeta", "Uncategorized"]
+    assert headers == [F("Alpha"), F("Zeta"), "Uncategorized"]
 
 
 def test_render_byte_stable_across_independent_aggregations(tmp_path):
@@ -387,7 +388,7 @@ def test_contested_node_renders_once_under_contested():
     assert "**Contested**" in md
     # Exactly one rendered line carries the node as a contested source.
     contested_lines = [l for l in md.splitlines()
-                       if l.startswith("- `N` —") and "useful" in l and "dead end" in l]
+                       if l.startswith(f"- `{F('N')}` —") and "useful" in l and "dead end" in l]
     assert len(contested_lines) == 1
 
 
@@ -427,7 +428,7 @@ def test_reflect_writes_lessons_file(tmp_path):
     out_path, agg = reflect(mem, tmp_path / "reflections" / "LESSONS.md")
     assert out_path.exists()
     assert agg["total"] == 1
-    assert "`A`" in out_path.read_text(encoding="utf-8")
+    assert f"`{F('A')}`" in out_path.read_text(encoding="utf-8")
 
 
 def test_second_session_benefits_from_the_first(tmp_path):
@@ -452,7 +453,7 @@ def test_second_session_benefits_from_the_first(tmp_path):
 
     # Session 2 loads the lessons doc.
     body = lessons.read_text(encoding="utf-8")
-    assert "`AuthMiddleware`" in body          # start here next time
+    assert f"`{F('AuthMiddleware')}`" in body          # start here next time
     assert "where is the cache?" in body       # don't re-derive this dead end
 
 
@@ -467,7 +468,7 @@ def test_cli_reflect_end_to_end(tmp_path):
     assert "Reflected 1 memories" in r2.stdout
     lessons = cwd / "graphify-out" / "reflections" / "LESSONS.md"
     assert lessons.exists()
-    assert "`AuthMiddleware`" in lessons.read_text(encoding="utf-8")
+    assert f"`{F('AuthMiddleware')}`" in lessons.read_text(encoding="utf-8")
 
 
 def test_cli_save_result_rejects_bad_outcome(tmp_path):
@@ -554,7 +555,7 @@ def test_cli_node_existence_gate_drops_stale_node_end_to_end(tmp_path):
     assert r.returncode == 0, r.stderr
     body = (out / "reflections" / "LESSONS.md").read_text(encoding="utf-8")
     assert "GhostNode" not in body
-    assert f"`{real}`" in body
+    assert f"`{F(real)}`" in body
 
 
 def _make_graph(tmp_path: Path) -> Path:
@@ -694,7 +695,7 @@ def test_cli_reflect_if_stale_reruns_when_labels_newer(tmp_path):
     ran = _run(["reflect", "--if-stale"], tmp_path)
     assert ran.returncode == 0, ran.stderr
     assert "up to date" not in (ran.stdout + ran.stderr).lower()
-    assert "### Renamed Topic" in lessons.read_text(encoding="utf-8")
+    assert f"### {F('Renamed Topic')}" in lessons.read_text(encoding="utf-8")
 
 
 def test_dead_ends_and_corrections_dedupe_by_question():

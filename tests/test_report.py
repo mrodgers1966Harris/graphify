@@ -4,6 +4,7 @@ from graphify.build import build_from_json
 from graphify.cluster import cluster, score_all
 from graphify.analyze import god_nodes, surprising_connections
 from graphify.report import generate
+from graphify.security import fence_label as F
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -85,13 +86,13 @@ def test_report_work_memory_section_present_with_overlay_and_dead_ends():
                       tokens, "./project", learning=learning)
     assert "## Work-memory lessons" in report
     assert "**Preferred sources**" in report
-    assert "`login()`" in report
+    assert f"`{F('login()')}`" in report
     # Tentative is not listed in the report's preferred block.
     assert "RedisClient" not in report
     # Dead-ends are query-scoped: question -> nodes, NOT a node-level status.
     assert "**Known dead ends**" in report
     assert "does it use websockets?" in report
-    assert "`WSServer`" in report
+    assert f"`{F('WSServer')}`" in report
 
 
 def test_report_work_memory_section_absent_without_overlay():

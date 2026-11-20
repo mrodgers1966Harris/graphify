@@ -405,6 +405,111 @@ def sanitize_label(text: str | None) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Untrusted-label fencing for agent-facing text output
+# ---------------------------------------------------------------------------
+#
+# Node labels come from repository content (headings, docstrings, comments,
+# import specifiers, LLM-named concepts). Anything an agent reads back from
+# graphify — query/explain/path/affected output, MCP tool results,
+# GRAPH_REPORT.md, wiki and Obsidian notes — wraps those labels in this fence so
+# the skill can tell the agent that fenced text is data, never instructions.
+
+UNTRUSTED_LABEL_OPEN = "<<untrusted-label>>"
+UNTRUSTED_LABEL_CLOSE = "<</untrusted-label>>"
+
+# C0/C1 controls plus Unicode line/paragraph separators, zero-width and
+# bidi-override characters: none belong in a rendered label, and each can be used
+# to break a line, hide text, or reorder what a reader sees.
+_UNSAFE_RENDER_CHAR_RE = re.compile(
+    "[\x00-\x1f\x7f-\x9f\u200b-\u200f\u2028-\u202e\u2060-\u2069\ufeff]"
+)
+# Fullwidth and small-form angle brackets that NFKC folds to ``<`` / ``>``.
+_ANGLE_FOLD = str.maketrans({"\uff1c": "<", "\ufe64": "<", "\uff1e": ">", "\ufe65": ">"})
+_ANGLE_RUN_RE = re.compile(r"<{2,}|>{2,}")
+_MARKER_WORD_RE = re.compile(r"untrusted[\W_]{0,3}label", re.IGNORECASE)
+_SIMPLE_TOKEN_RE = re.compile(r"\S{1,256}")
+
+
+def _clean_for_render(text: object) -> str:
+    if text is None:
+        return ""
+    clean = _UNSAFE_RENDER_CHAR_RE.sub("", str(text)).translate(_ANGLE_FOLD)
+    if len(clean) > _MAX_LABEL_LEN:
+        clean = clean[:_MAX_LABEL_LEN]
+    # A label must not be able to spell a fence marker, or a near-miss a reader
+    # might take for one, and so close its own fence early: drop the marker word
+    # and split every doubled angle bracket.
+    clean = _MARKER_WORD_RE.sub("[marker]", clean)
+    return _ANGLE_RUN_RE.sub(lambda m: " ".join(m.group(0)), clean)
+
+
+def fence_label(text: object) -> str:
+    """Render repository-derived label text as fenced, inert data.
+
+    Strips control and invisible formatting characters, caps the length like
+    :func:`sanitize_label`, splits doubled angle brackets so the text cannot
+    spell a fence marker, and wraps the result in ``<<untrusted-label>>`` ...
+    ``<</untrusted-label>>``.
+    """
+    return f"{UNTRUSTED_LABEL_OPEN}{_clean_for_render(text)}{UNTRUSTED_LABEL_CLOSE}"
+
+
+def fence_field(text: object) -> str:
+    """Render a repository-derived field (path, relation, location) for output.
+
+    A single whitespace-free token — the normal shape of a file path, relation
+    name, or ``L12`` location — is printed bare after cleaning. Anything else is
+    fenced like a label, so a field that repeats a label (e.g. an unresolved
+    import specifier stored as ``source_file``) never reaches output unfenced.
+    """
+    clean = _clean_for_render(text)
+    if not clean:
+        return ""
+    if _SIMPLE_TOKEN_RE.fullmatch(clean):
+        return clean
+    return fence_label(clean)
+
+
+_FILENAME_TOKEN_RE = re.compile(r"[^\s<>]{1,64}")
+_DEFAULT_COMMUNITY_RE = re.compile(r"Community \d+")
+_ASCII_WORD_RE = re.compile(r"[A-Z]+(?![a-z])|[A-Za-z][a-z0-9]*|[0-9]+")
+
+
+def node_is_name_like(data: Mapping[str, Any]) -> bool:
+    """Whether a node's label is a name from the code or file tree, not free text.
+
+    Code symbols, module specifiers, and file nodes are named by the repository's
+    own structure; headings, docstring/comment rationale, and other prose nodes
+    (``document``, ``paper``, ``image``, ``rationale``, ``concept``) are free text.
+    """
+    if data.get("file_type") in (None, "", "code"):
+        return True
+    label = str(data.get("label") or "")
+    source_file = str(data.get("source_file") or "")
+    return bool(label) and label == source_file.replace("\\", "/").rsplit("/", 1)[-1]
+
+
+def label_filename_base(label: object, *, name_like: bool = False) -> str:
+    """Return the text a wiki/Obsidian filename (or tag) may be built from.
+
+    Filenames and the wikilink targets that repeat them sit outside any fence,
+    so free text never reaches them: only a single-token label of a name-like
+    node (see :func:`node_is_name_like`) and graphify's own ``Community N``
+    placeholder are kept. Anything else becomes its first ASCII word plus a
+    short content hash.
+    """
+    import hashlib
+
+    clean = _clean_for_render(label).strip()
+    if _DEFAULT_COMMUNITY_RE.fullmatch(clean) or (name_like and _FILENAME_TOKEN_RE.fullmatch(clean)):
+        return clean
+    digest = hashlib.sha256(str(label).encode("utf-8", "replace")).hexdigest()[:10]
+    first = _ASCII_WORD_RE.search(clean)
+    prefix = first.group(0)[:16] if first else "label"
+    return f"{prefix}_{digest}"
+
+
+# ---------------------------------------------------------------------------
 # Metadata sanitisation (recursive, bounded, HTML-safe)
 # ---------------------------------------------------------------------------
 

@@ -426,7 +426,7 @@ def _case_collision_graph():
     return build_from_json({
         "nodes": [
             {"id": "n1", "label": "References", "file_type": "code", "source_file": "a.py"},
-            {"id": "n2", "label": "references", "file_type": "document", "source_file": "b.md"},
+            {"id": "n2", "label": "references", "file_type": "code", "source_file": "b.py"},
         ],
         "edges": [],
     })

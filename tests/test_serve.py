@@ -3,6 +3,7 @@ import json
 import pytest
 import networkx as nx
 from networkx.readwrite import json_graph
+from graphify.security import fence_label as F
 
 from graphify.serve import (
     _communities_from_graph,
@@ -302,7 +303,7 @@ def test_query_graph_text_keeps_short_non_english_terms():
     G.add_node("frontend", label="前端", source_file="docs/前端.md", source_location="L1", community=0)
     text = _query_graph_text(G, "前端", mode="bfs", depth=1)
     assert "No matching nodes found." not in text
-    assert "NODE 前端" in text
+    assert f"NODE {F('前端')}" in text
 
 
 def test_infer_context_filters_for_calls_question():
@@ -403,8 +404,8 @@ def test_subgraph_to_text_annotates_node_with_learning_status():
     }
     text = _subgraph_to_text(G, {"n1", "n2"}, [("n1", "n2")])
     lines = {l.split()[1]: l for l in text.splitlines() if l.startswith("NODE ")}
-    assert "learning=preferred]" in lines["extract"]
-    assert "learning=" not in lines["cluster"]  # un-annotated node
+    assert "learning=preferred]" in lines[F("extract")]
+    assert "learning=" not in lines[F("cluster")]  # un-annotated node
 
 
 def test_subgraph_to_text_marks_stale_status():
@@ -810,7 +811,7 @@ def test_query_text_chinese_finds_routing_nodes():
 # --- get_community header (#1448): show the community name, no placeholder doubling ---
 
 def test_community_header_shows_real_name():
-    assert _community_header(12, "Auth & Sessions") == "Community 12 — Auth & Sessions"
+    assert _community_header(12, "Auth & Sessions") == f"Community 12 — {F('Auth & Sessions')}"
 
 
 def test_community_header_skips_placeholder_name():

@@ -6,6 +6,7 @@ import networkx as nx
 from networkx.readwrite import json_graph
 
 import graphify.__main__ as mainmod
+from graphify.security import fence_label
 
 
 def _write_graph(tmp_path):
@@ -34,7 +35,7 @@ def test_affected_cli_reverse_traverses_impact_edges(monkeypatch, tmp_path, caps
     mainmod.main()
 
     out = capsys.readouterr().out
-    assert "Affected nodes for Foo" in out
+    assert f"Affected nodes for {fence_label('Foo')}" in out
     assert "X()" in out
     assert "calls" in out
     assert "__init__.py" in out
@@ -119,7 +120,7 @@ def test_affected_cli_loads_edges_keyed_graph(monkeypatch, tmp_path, capsys):
     mainmod.main()
 
     out = capsys.readouterr().out
-    assert "Affected nodes for Foo" in out
+    assert f"Affected nodes for {fence_label('Foo')}" in out
     assert "X()" in out
     assert "calls" in out
 
@@ -264,7 +265,7 @@ def test_affected_cli_source_file_path_uses_file_level_node(monkeypatch, tmp_pat
     mainmod.main()
 
     out = capsys.readouterr().out
-    assert "Affected nodes for route.ts" in out
+    assert f"Affected nodes for {fence_label('route.ts')}" in out
     assert "consumer.ts" in out
     assert "imports_from" in out
     assert "No unique node matched" not in out

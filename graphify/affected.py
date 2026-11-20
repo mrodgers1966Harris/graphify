@@ -8,6 +8,8 @@ import unicodedata
 
 import networkx as nx
 
+from graphify.security import fence_field, fence_label
+
 
 DEFAULT_AFFECTED_RELATIONS = (
     "calls",
@@ -34,15 +36,15 @@ class AffectedHit:
 
 def _node_label(graph: nx.Graph, node_id: str) -> str:
     data = graph.nodes[node_id]
-    return str(data.get("label") or node_id)
+    return fence_label(data.get("label") or node_id)
 
 
 def _format_location(data: dict) -> str:
     source_file = data.get("source_file") or "-"
     source_location = data.get("source_location")
     if source_location:
-        return f"{source_file}:{source_location}"
-    return str(source_file)
+        return fence_field(f"{source_file}:{source_location}")
+    return fence_field(source_file)
 
 
 def _bare_name(label: str) -> str:
@@ -222,7 +224,7 @@ def format_affected(
     for hit in hits:
         data = graph.nodes[hit.node_id]
         lines.append(
-            f"- {_node_label(graph, hit.node_id)} [{hit.via_relation}] {_format_location(data)}"
+            f"- {_node_label(graph, hit.node_id)} [{fence_field(hit.via_relation)}] {_format_location(data)}"
         )
     return "\n".join(lines)
 
