@@ -155,6 +155,7 @@ After Step 4, show the graph diff:
 $(cat graphify-out/.graphify_python) -c "
 import json
 from graphify.analyze import graph_diff
+from graphify.security import fence_label
 from graphify.build import build_from_json
 from networkx.readwrite import json_graph
 import networkx as nx
@@ -170,7 +171,7 @@ if old_data:
     diff = graph_diff(G_old, G_new)
     print(diff['summary'])
     if diff['new_nodes']:
-        print('New nodes:', ', '.join(n['label'] for n in diff['new_nodes'][:5]))
+        print('New nodes:', ', '.join(fence_label(n['label']) for n in diff['new_nodes'][:5]))
     if diff['new_edges']:
         print('New edges:', len(diff['new_edges']))
 "
