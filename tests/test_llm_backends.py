@@ -1,5 +1,6 @@
 """Tests for direct semantic-extraction backend selection."""
 
+import re
 from pathlib import Path
 from unittest.mock import patch
 
@@ -74,7 +75,7 @@ def test_extract_files_direct_routes_gemini_through_openai_compat(tmp_path, monk
     # Source content is wrapped in an untrusted_source delimiter block (#1210)
     # rather than the old `=== path ===` separator.
     user_msg = call.call_args.args[3]
-    assert '<untrusted_source path="note.md" sha256=' in user_msg
+    assert re.search(r'<untrusted_source sha256="[0-9a-f]{64}">\nsource_file: note\.md\n', user_msg)
     assert "# Architecture\n\nThe runner emits a snapshot." in user_msg
     assert user_msg.rstrip().endswith("</untrusted_source>")
     assert call.call_args.kwargs["temperature"] == 0
