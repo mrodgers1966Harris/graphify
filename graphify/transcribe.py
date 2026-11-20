@@ -70,12 +70,19 @@ def download_audio(url: str, output_dir: Path) -> Path:
             print(f"  cached audio: {candidate.name}")
             return candidate
 
+    # yt-dlp would otherwise honour http_proxy / https_proxy and let the proxy
+    # resolve the hostname validate_url just checked. '' means direct
+    # connection. Restricting to plain http(s) formats keeps the download on
+    # yt-dlp's own HTTP stack; HLS/DASH can hand off to an ffmpeg subprocess,
+    # which reads the proxy variables from the environment itself.
+    direct = "[protocol~='^https?$']"
     ydl_opts = {
-        'format': 'bestaudio[ext=m4a]/bestaudio/best',
+        'format': f'bestaudio[ext=m4a]{direct}/bestaudio{direct}/best{direct}',
         'outtmpl': out_template,
         'quiet': True,
         'no_warnings': True,
         'noplaylist': True,
+        'proxy': '',
         'postprocessors': [],  # no ffmpeg needed — use native audio
     }
 

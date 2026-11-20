@@ -176,9 +176,30 @@ def _resolve_and_validate(host: str, port: int) -> tuple[int, str]:
     raise OSError(f"SSRF blocked: no usable address resolved from '{host}'")
 
 
+def _refuse_tunnel(host, port=None, headers=None) -> None:
+    # A proxy tunnel (CONNECT) makes the proxy resolve the target hostname
+    # with its own resolver, so the IP validated here is not the one reached.
+    raise OSError(f"SSRF blocked: refusing to tunnel to '{host}' through a proxy")
+
+
+def _refuse_proxied_request(req: urllib.request.Request) -> None:
+    """Refuse any request urllib has rewritten to go through a proxy.
+
+    A forward proxy is handed the original hostname (absolute-form request
+    line or CONNECT) and resolves it itself, which bypasses the connect-time
+    IP check entirely. Guarded fetches must dial the origin directly.
+    """
+    if req.has_proxy() or getattr(req, "_tunnel_host", None):
+        raise urllib.error.URLError(
+            f"SSRF blocked: proxied request to {req.full_url!r} is not allowed"
+        )
+
+
 class _SSRFGuardedHTTPConnection(http.client.HTTPConnection):
     """HTTPConnection that resolves + validates DNS once, then connects to the
     exact validated IP (no second resolution = no DNS-rebind TOCTOU)."""
+
+    set_tunnel = staticmethod(_refuse_tunnel)
 
     def connect(self) -> None:
         family, ip = _resolve_and_validate(self.host, self.port)
@@ -187,8 +208,6 @@ class _SSRFGuardedHTTPConnection(http.client.HTTPConnection):
             self.timeout,
             self.source_address,
         )
-        if self._tunnel_host:
-            self._tunnel()
 
 
 class _SSRFGuardedHTTPSConnection(http.client.HTTPSConnection):
@@ -199,6 +218,8 @@ class _SSRFGuardedHTTPSConnection(http.client.HTTPSConnection):
     validation work correctly (validating against the IP would break TLS).
     """
 
+    set_tunnel = staticmethod(_refuse_tunnel)
+
     def connect(self) -> None:
         family, ip = _resolve_and_validate(self.host, self.port)
         sock = socket.create_connection(
@@ -206,10 +227,6 @@ class _SSRFGuardedHTTPSConnection(http.client.HTTPSConnection):
             self.timeout,
             self.source_address,
         )
-        if self._tunnel_host:
-            self.sock = sock
-            self._tunnel()
-            sock = self.sock
         self.sock = self._context.wrap_socket(sock, server_hostname=self.host)
 
 
@@ -217,6 +234,7 @@ class _SSRFGuardedHTTPHandler(urllib.request.HTTPHandler):
     """urllib handler that routes http:// through _SSRFGuardedHTTPConnection."""
 
     def http_open(self, req):
+        _refuse_proxied_request(req)
         return self.do_open(_SSRFGuardedHTTPConnection, req)
 
 
@@ -224,6 +242,7 @@ class _SSRFGuardedHTTPSHandler(urllib.request.HTTPSHandler):
     """urllib handler that routes https:// through _SSRFGuardedHTTPSConnection."""
 
     def https_open(self, req):
+        _refuse_proxied_request(req)
         return self.do_open(_SSRFGuardedHTTPSConnection, req)
 
 
@@ -243,7 +262,11 @@ def _build_opener() -> urllib.request.OpenerDirector:
     # build_opener replaces the default HTTP(S)Handlers with our SSRF-guarded
     # subclasses, so every connection resolves+validates DNS once and connects
     # to that exact IP. Thread-safe: no process-global state is mutated.
+    # The empty ProxyHandler replaces urllib's default one, which would pick
+    # up http_proxy / https_proxy (and OS proxy settings) and hand the
+    # hostname to a proxy that resolves it outside the guard.
     return urllib.request.build_opener(
+        urllib.request.ProxyHandler({}),
         _SSRFGuardedHTTPHandler,
         _SSRFGuardedHTTPSHandler,
         _NoFileRedirectHandler,
