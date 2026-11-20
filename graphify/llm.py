@@ -11,6 +11,7 @@ import os
 import re
 import sys
 import time
+import unicodedata
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, replace
@@ -486,6 +487,39 @@ def _neutralise_injection_sentinels(text: str) -> str:
     return _INJECTION_SENTINELS.sub(lambda m: m.group(0)[0] + "​" + m.group(0)[1:], text)
 
 
+# File and directory names are attacker-controlled too: a name can carry a
+# quote, angle brackets, or a line break, and a directory separator lets a
+# relative path spell `</untrusted_source>`. Every path that reaches a prompt
+# goes through `_escape_prompt_path` so it stays one inert, quoted value.
+_PATH_ENTITIES = {"&": "&amp;", '"': "&quot;", "'": "&#39;", "<": "&lt;", ">": "&gt;"}
+
+
+def _path_char_needs_escape(ch: str) -> bool:
+    if ch in _PATH_ENTITIES or unicodedata.category(ch) in ("Cc", "Zl", "Zp"):
+        return True
+    # Fullwidth / small-form look-alikes (e.g. U+FF1C) read as `<` to a model.
+    return not ch.isascii() and any(c in _PATH_ENTITIES for c in unicodedata.normalize("NFKC", ch))
+
+
+def _escape_prompt_path(path: str) -> str:
+    """Return ``path`` as a single-line value safe inside a quoted prompt attribute.
+
+    Chat-template sentinels are defanged first (while line structure is still
+    visible), then quotes, angle brackets, ``&``, control characters and Unicode
+    line/paragraph separators are replaced with character references.
+    """
+    neutral = _neutralise_injection_sentinels(path)
+    return "".join(
+        _PATH_ENTITIES.get(ch, f"&#x{ord(ch):x};") if _path_char_needs_escape(ch) else ch
+        for ch in neutral
+    )
+
+
+def _path_is_prompt_verbatim(path: str) -> bool:
+    """True when ``path`` can be shown to a model unchanged (nothing to escape)."""
+    return _escape_prompt_path(path) == path
+
+
 def _wrap_untrusted(rel: str, content: str) -> str:
     """Wrap one file's content in a labelled, hash-stamped untrusted-data block.
 
@@ -496,7 +530,7 @@ def _wrap_untrusted(rel: str, content: str) -> str:
     sha = hashlib.sha256(content.encode("utf-8", errors="replace")).hexdigest()
     safe = _neutralise_injection_sentinels(content)
     return (
-        f'<untrusted_source path="{rel}" sha256="{sha}">\n'
+        f'<untrusted_source path="{_escape_prompt_path(rel)}" sha256="{sha}">\n'
         f"{safe}\n"
         f"</untrusted_source>"
     )
@@ -698,9 +732,14 @@ def _image_notes(refs: list[_ImageRef], *, with_paths: bool = False) -> str:
         "and edges to any code/doc nodes the image clearly references.",
     ]
     for i, r in enumerate(refs, 1):
-        note = f"[image {i}] source_file: {r.rel}"
+        note = f'[image {i}] source_file: "{_escape_prompt_path(r.rel)}"'
         if with_paths:
-            note += f"  path: {r.path}"
+            # The Read tool needs the literal path, so a path that would have to
+            # be escaped is withheld rather than shown raw.
+            if _path_is_prompt_verbatim(str(r.path)):
+                note += f'  path: "{r.path}"'
+            else:
+                note += " (not shown: file path contains characters that cannot be quoted safely)"
         if r.raw is None and not with_paths:
             note += " (not shown: unreadable or exceeds size limit)"
         lines.append(note)
@@ -1213,6 +1252,8 @@ def _call_claude_cli(user_message: str, max_tokens: int = 8192, *, deep_mode: bo
         user_message = _with_image_notes(user_message, images, with_paths=True)
         seen_dirs: set[str] = set()
         for r in images:
+            if not _path_is_prompt_verbatim(str(r.path)):
+                continue
             d = str(r.path.parent)
             if d not in seen_dirs:
                 seen_dirs.add(d)
