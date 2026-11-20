@@ -1,5 +1,6 @@
 # MCP stdio server - exposes graph query tools to Claude and other agents
 from __future__ import annotations
+import ipaddress
 import json
 import math
 import re
@@ -1367,6 +1368,161 @@ class _MCPASGIApp:
         await self._manager.handle_request(scope, receive, send)
 
 
+class _UnauthenticatedExposureError(ValueError):
+    """Raised when the HTTP transport would be reachable off-host with no API key."""
+
+
+def _is_loopback_host(host: str) -> bool:
+    """True only when ``host`` names a loopback address.
+
+    Anything that is not provably loopback (wildcards in any spelling, LAN
+    addresses, hostnames other than ``localhost``) counts as network-exposed.
+    """
+    h = (host or "").strip()
+    if h.startswith("[") and h.endswith("]"):
+        h = h[1:-1]
+    if h.lower() == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(h).is_loopback
+    except ValueError:
+        return False
+
+
+def _http_bind_host(host: str) -> str:
+    """The address handed to uvicorn: the exact literal that was authorized.
+
+    ``localhost`` is pinned to ``127.0.0.1`` so the bind cannot be re-resolved
+    to a non-loopback address after :func:`_require_api_key_if_exposed` ran.
+    """
+    h = (host or "").strip()
+    if h.lower() == "localhost":
+        return "127.0.0.1"
+    if h.startswith("[") and h.endswith("]"):
+        return h[1:-1]
+    return h
+
+
+def _require_api_key_if_exposed(host: str, api_key: str | None) -> None:
+    if api_key or _is_loopback_host(host):
+        return
+    raise _UnauthenticatedExposureError(
+        f"refusing to serve the graph on {host or '(all interfaces)'!s} without an API key: "
+        "a non-loopback bind is reachable from the network. Set --api-key "
+        "(or GRAPHIFY_API_KEY), or bind 127.0.0.1."
+    )
+
+
+def _bracket_ipv6(name: str) -> str:
+    if ":" in name and not name.startswith("["):
+        try:
+            if isinstance(ipaddress.ip_address(name), ipaddress.IPv6Address):
+                return f"[{name}]"
+        except ValueError:
+            pass
+    return name
+
+
+def _has_port(name: str) -> bool:
+    tail = name.rsplit("]", 1)[-1] if name.startswith("[") else name
+    return ":" in tail
+
+
+def _http_allowed_hosts(host: str, port: int, extra: list[str] | None = None) -> list[str]:
+    """Host header values the HTTP transport accepts.
+
+    Always the loopback aliases plus the bind address (unless it is a
+    wildcard), each with and without ``:port``. Off-host clients reach the
+    server under names only the operator knows, so those come from
+    ``extra`` (``--allowed-host`` / ``GRAPHIFY_ALLOWED_HOSTS``); there is no
+    accept-any mode, because that is what DNS rebinding exploits.
+    """
+    names = {"localhost", "127.0.0.1", "[::1]"}
+    bind = _http_bind_host(host)
+    if bind:
+        try:
+            unspecified = ipaddress.ip_address(bind).is_unspecified
+        except ValueError:
+            unspecified = False
+        if not unspecified:
+            names.add(_bracket_ipv6(bind.lower()))
+    allowed: set[str] = set()
+    for name in names:
+        allowed.add(name)
+        allowed.add(f"{name}:{port}")
+    for entry in extra or ():
+        e = _bracket_ipv6(entry.strip().lower())
+        if not e:
+            continue
+        base = e[:-2] if e.endswith(":*") else e
+        if not base or "*" in base or "/" in base:
+            raise ValueError(
+                f"invalid allowed host {entry!r}: use an explicit host name or "
+                "address, optionally with :port or :*"
+            )
+        allowed.add(e)
+        if not _has_port(e):
+            allowed.add(f"{e}:{port}")
+    return sorted(allowed)
+
+
+def _host_matches(value: str, allowed: frozenset[str]) -> bool:
+    if value in allowed:
+        return True
+    base, sep, port = value.rpartition(":")
+    return bool(sep) and port.isdigit() and f"{base}:*" in allowed
+
+
+class _HostGuardMiddleware:
+    """Pure-ASGI DNS-rebinding guard: Host and Origin must be on the allowlist.
+
+    Checked on every request (including ones that reuse an MCP session), before
+    authentication and before the request reaches the session manager, so it
+    does not depend on the MCP SDK's own transport-security defaults.
+    """
+
+    def __init__(self, app, allowed_hosts: list[str]) -> None:
+        self.app = app
+        self._allowed = frozenset(allowed_hosts)
+
+    async def __call__(self, scope, receive, send) -> None:
+        if scope["type"] not in ("http", "websocket"):
+            await self.app(scope, receive, send)
+            return
+        host_values = [v for k, v in scope.get("headers") or [] if k == b"host"]
+        origin_values = [v for k, v in scope.get("headers") or [] if k == b"origin"]
+        status = None
+        if len(host_values) != 1 or not _host_matches(
+            host_values[0].decode("latin-1").strip().lower(), self._allowed
+        ):
+            status, body = 421, b'{"error": "invalid host header"}'
+        elif origin_values:
+            origin = origin_values[0].decode("latin-1").strip().lower()
+            scheme, sep, rest = origin.partition("://")
+            if (
+                len(origin_values) != 1
+                or not sep
+                or scheme not in ("http", "https")
+                or not _host_matches(rest, self._allowed)
+            ):
+                status, body = 403, b'{"error": "invalid origin header"}'
+        if status is None:
+            await self.app(scope, receive, send)
+            return
+        if scope["type"] == "websocket":
+            await send({"type": "websocket.close", "code": 1008})
+            return
+        await send({
+            "type": "http.response.start",
+            "status": status,
+            "headers": [
+                (b"content-type", b"application/json"),
+                (b"content-length", str(len(body)).encode("ascii")),
+            ],
+        })
+        await send({"type": "http.response.body", "body": body})
+
+
 class _ApiKeyMiddleware:
     """Pure-ASGI API-key gate for the HTTP transport.
 
@@ -1418,11 +1574,17 @@ def _build_http_app(
     json_response: bool = False,
     stateless: bool = False,
     session_timeout: float | None = 3600.0,
+    allowed_hosts: list[str] | None = None,
 ):
     """Build the Starlette ASGI app for the Streamable HTTP transport.
 
     Split out from :func:`serve_http` (which blocks on uvicorn) so the wiring
     can be exercised with an in-process ASGI test client.
+
+    Raises :class:`_UnauthenticatedExposureError` when ``host`` is not
+    loopback and no ``api_key`` is set. ``allowed_hosts`` adds Host header
+    values (beyond the loopback aliases and the bind address) that clients
+    may use; requests with any other Host or Origin are rejected.
 
     ``session_timeout`` reaps stateful sessions idle for that many seconds so a
     long-running shared server does not leak memory when IDE clients disconnect
@@ -1447,19 +1609,19 @@ def _build_http_app(
     # A blank key (e.g. --api-key "" or an empty GRAPHIFY_API_KEY) must not be
     # mistaken for "auth on" — normalize it to None so the gate is unambiguous.
     api_key = (api_key or "").strip() or None
+    _require_api_key_if_exposed(host, api_key)
+
+    # DNS-rebinding protection stays on for every bind, wildcard included:
+    # a rebinding page reaches a wildcard bind through loopback just as well.
+    allowed = _http_allowed_hosts(host, port, allowed_hosts)
 
     server = _build_server(graph_path)
 
-    # DNS-rebinding protection. When the operator binds a wildcard address they
-    # are intentionally exposing the server, so accept any Host header; for a
-    # loopback/specific bind, restrict Host to that address (with and without
-    # the port) plus the localhost aliases.
-    if host in ("0.0.0.0", "::", ""):
-        security = TransportSecuritySettings(enable_dns_rebinding_protection=False)
-    else:
-        allowed = {host, "localhost", "127.0.0.1"}
-        allowed |= {f"{h}:{port}" for h in list(allowed)}
-        security = TransportSecuritySettings(allowed_hosts=sorted(allowed))
+    security = TransportSecuritySettings(
+        enable_dns_rebinding_protection=True,
+        allowed_hosts=allowed,
+        allowed_origins=[f"{scheme}://{h}" for h in allowed for scheme in ("http", "https")],
+    )
 
     # The SDK rejects a non-positive timeout and forbids one in stateless mode.
     idle_timeout = None if (stateless or not session_timeout or session_timeout <= 0) else session_timeout
@@ -1479,7 +1641,7 @@ def _build_http_app(
         async with manager.run():
             yield
 
-    middleware = []
+    middleware = [Middleware(_HostGuardMiddleware, allowed_hosts=allowed)]
     if api_key:
         middleware.append(Middleware(_ApiKeyMiddleware, api_key=api_key))
 
@@ -1500,6 +1662,7 @@ def serve_http(
     json_response: bool = False,
     stateless: bool = False,
     session_timeout: float | None = 3600.0,
+    allowed_hosts: list[str] | None = None,
 ) -> None:
     """Start the MCP server over Streamable HTTP (MCP spec 2025-03-26).
 
@@ -1509,9 +1672,15 @@ def serve_http(
 
     ``api_key`` (or the ``GRAPHIFY_API_KEY`` env var) enables a simple header
     check (``Authorization: Bearer <key>`` or ``X-API-Key: <key>``). OAuth is a
-    deliberate follow-up. Binding ``0.0.0.0`` exposes the server beyond
-    localhost — set an api_key when you do.
+    deliberate follow-up. Any non-loopback bind (``0.0.0.0``, ``::``, a LAN
+    address, ...) requires an api_key; without one this raises
+    :class:`_UnauthenticatedExposureError` before anything is bound.
+    ``allowed_hosts`` lists the Host names off-host clients use to reach the
+    server (see :func:`_http_allowed_hosts`).
     """
+    api_key = (api_key or "").strip() or None
+    _require_api_key_if_exposed(host, api_key)
+
     graph_path = graph_path or _default_graph_json()
     try:
         import uvicorn
@@ -1520,8 +1689,6 @@ def serve_http(
             'HTTP transport needs the mcp extra (mcp + starlette + uvicorn). '
             'Run: pip install "graphifyy[mcp]"'
         ) from e
-
-    api_key = (api_key or "").strip() or None
 
     app = _build_http_app(
         graph_path,
@@ -1532,20 +1699,15 @@ def serve_http(
         json_response=json_response,
         stateless=stateless,
         session_timeout=session_timeout,
+        allowed_hosts=allowed_hosts,
     )
 
-    auth_note = "api-key required" if api_key else "no auth (set --api-key to require one)"
+    auth_note = "api-key required" if api_key else "no auth (loopback only)"
     print(
         f"graphify MCP server (streamable-http) on http://{host}:{port}{path} - {auth_note}",
         file=sys.stderr,
     )
-    if host in ("0.0.0.0", "::", "") and not api_key:
-        print(
-            f"WARNING: binding {host or '0.0.0.0'} with no api-key exposes the graph "
-            "unauthenticated on the network. Set --api-key (or GRAPHIFY_API_KEY).",
-            file=sys.stderr,
-        )
-    uvicorn.run(app, host=host, port=port)
+    uvicorn.run(app, host=_http_bind_host(host), port=port)
 
 
 def _main(argv: list[str] | None = None) -> None:
@@ -1599,10 +1761,24 @@ def _main(argv: list[str] | None = None) -> None:
         default=3600.0,
         help="Reap stateful sessions idle this many seconds (default: 3600; 0 disables)",
     )
+    parser.add_argument(
+        "--allowed-host",
+        dest="allowed_hosts",
+        action="append",
+        default=[h for h in os.environ.get("GRAPHIFY_ALLOWED_HOSTS", "").split(",") if h.strip()],
+        metavar="HOST[:PORT]",
+        help="Extra Host header value clients may use (repeatable; env: GRAPHIFY_ALLOWED_HOSTS, "
+             "comma-separated). Loopback names are always allowed; all others are rejected.",
+    )
     args = parser.parse_args(argv)
     graph_path = args.graph_flag or args.graph_path or _default_graph_json()
 
     if args.transport == "http":
+        try:
+            _require_api_key_if_exposed(args.host, (args.api_key or "").strip() or None)
+            _http_allowed_hosts(args.host, args.port, args.allowed_hosts)
+        except ValueError as e:
+            parser.error(str(e))
         serve_http(
             graph_path,
             host=args.host,
@@ -1612,6 +1788,7 @@ def _main(argv: list[str] | None = None) -> None:
             json_response=args.json_response,
             stateless=args.stateless,
             session_timeout=args.session_timeout,
+            allowed_hosts=args.allowed_hosts,
         )
     else:
         serve(graph_path)
