@@ -3736,25 +3736,38 @@ def main() -> None:
                 sys.exit(2)
             watch_arg = a
 
+        from graphify.watch import _confine_scan_root, _rebuild_code
+
         if watch_arg is not None:
             watch_path = Path(watch_arg)
         else:
-            # Try to recover the scan root saved by the last full build
+            # Try to recover the scan root saved by the last full build. The
+            # marker may be committed, so only an in-repo root is honoured.
+            watch_path = Path(".")
             saved = Path(_GRAPHIFY_OUT) / ".graphify_root"
             if saved.exists():
-                watch_path = Path(saved.read_text(encoding="utf-8").strip())
-            else:
-                watch_path = Path(".")
+                saved_text = saved.read_text(encoding="utf-8").strip()
+                if saved_text:
+                    bound = _confine_scan_root(Path(saved_text))
+                    if bound is None:
+                        print(
+                            f"warning: ignoring {saved}: {saved_text!r} is outside "
+                            f"{Path.cwd()}. Pass the path to 'graphify update' to scan it.",
+                            file=sys.stderr,
+                        )
+                    else:
+                        watch_path = bound
         if not watch_path.exists():
             print(f"error: path not found: {watch_path}", file=sys.stderr)
             sys.exit(1)
-        from graphify.watch import _rebuild_code
 
         print(f"Re-extracting code files in {watch_path} (no LLM needed)...")
         # Interactive CLI: block on the per-repo lock rather than skip, so the
         # user sees their explicit `graphify update` complete instead of
         # exiting silently when a hook-driven rebuild happens to be running.
-        ok = _rebuild_code(watch_path, force=force, no_cluster=no_cluster, block_on_lock=True)
+        ok = _rebuild_code(
+            watch_path, force=force, no_cluster=no_cluster, block_on_lock=True, confine_to_cwd=False
+        )
         if ok:
             print("Code graph updated. For doc/paper/image changes run /graphify --update in your AI assistant.")
             if not (

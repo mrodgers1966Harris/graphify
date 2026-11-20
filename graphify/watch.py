@@ -657,6 +657,31 @@ def _json_text(data: dict) -> str:
     return json.dumps(data, indent=2, ensure_ascii=False) + "\n"
 
 
+def _confine_scan_root(watch_path: Path) -> Path | None:
+    """Bind a scan root read from ``.graphify_root`` to the current repository.
+
+    The marker can be committed, so its text is untrusted: it may be absolute,
+    climb out with ``..``, or name an in-repo symlink to a foreign tree. The
+    path is resolved exactly once and the canonical result is returned, so the
+    caller must scan that value rather than the marker text. A relative marker
+    comes back relative to the cwd to keep source paths in their #777 form.
+
+    Returns None when the canonical path is not inside the cwd (the repository
+    the hook or ``graphify update`` runs in).
+    """
+    base = Path.cwd().resolve()
+    try:
+        resolved = (base / watch_path).resolve()
+    except (OSError, RuntimeError, ValueError):
+        return None
+    if not _is_relative_to(resolved, base):
+        return None
+    if watch_path.is_absolute():
+        return resolved
+    rel = resolved.relative_to(base)
+    return rel if rel.parts else Path(".")
+
+
 def _rebuild_code(
     watch_path: Path,
     *,
@@ -666,6 +691,7 @@ def _rebuild_code(
     no_cluster: bool = False,
     acquire_lock: bool = True,
     block_on_lock: bool = False,
+    confine_to_cwd: bool | None = None,
 ) -> bool:
     """Re-run AST extraction + build + optional cluster + report for code files. No LLM needed.
 
@@ -688,8 +714,23 @@ def _rebuild_code(
     ``no_cluster`` skips community detection and writes raw merged extraction
     JSON to graphify-out/graph.json (mirrors ``extract --no-cluster``).
 
+    ``confine_to_cwd`` binds ``watch_path`` with ``_confine_scan_root`` and
+    raises ValueError when it lies outside the cwd. The default (None) enables
+    it in processes launched by a graphify git hook: hooks installed by earlier
+    releases pass the raw ``.graphify_root`` text straight to this function.
+
     Returns True on success, False on error or skipped-due-to-lock.
     """
+    if confine_to_cwd is None:
+        confine_to_cwd = bool(os.environ.get("GRAPHIFY_REBUILD_LOG"))
+    if confine_to_cwd:
+        bound = _confine_scan_root(watch_path)
+        if bound is None:
+            raise ValueError(
+                f"scan root {watch_path} is outside {Path.cwd()}; refusing to "
+                "rebuild there (re-run 'graphify hook install' to update the hook)"
+            )
+        watch_path = bound
     out = watch_path / _GRAPHIFY_OUT
     if acquire_lock:
         # #1059: incremental (changed_paths is not None) hooks must not drop
@@ -722,6 +763,7 @@ def _rebuild_code(
                 force=force,
                 no_cluster=no_cluster,
                 acquire_lock=False,
+                confine_to_cwd=False,
             )
             # Late-arrival drain: another hook may have queued work while we
             # were rebuilding. Loop up to _PENDING_DRAIN_MAX_PASSES times so a
@@ -739,6 +781,7 @@ def _rebuild_code(
                         force=force,
                         no_cluster=no_cluster,
                         acquire_lock=False,
+                        confine_to_cwd=False,
                     ) and ok
             return ok
 
