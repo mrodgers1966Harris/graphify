@@ -14,6 +14,7 @@ URL_PREFIXES = ('http://', 'https://', 'www.')
 _DEFAULT_MODEL = "base"
 _TRANSCRIPTS_DIR = str(_out_path("transcripts"))
 _FALLBACK_PROMPT = "Use proper punctuation and paragraph breaks."
+_WHISPER_LABEL_MAXLEN = 60
 
 
 def _model_name() -> str:
@@ -107,7 +108,16 @@ def build_whisper_prompt(god_nodes: list[dict]) -> str:
     if override:
         return override
 
-    labels = [n.get("label", "") for n in god_nodes[:10] if n.get("label")]
+    from graphify.security import sanitize_prompt_label
+
+    labels = [
+        label
+        for label in (
+            sanitize_prompt_label(n.get("label"), max_len=_WHISPER_LABEL_MAXLEN)
+            for n in god_nodes[:10]
+        )
+        if label
+    ]
     if not labels:
         return _FALLBACK_PROMPT
 
