@@ -341,11 +341,18 @@ in a headless extraction, install and authenticate the
 ```bash
 uv tool install "graphifyy[google]"  # needed for Google Sheets table rendering
 gws auth login -s drive
+export GRAPHIFY_GOOGLE_WORKSPACE_ALLOW_FILE_IDS="<drive-file-id>,<drive-file-id>"
+export GRAPHIFY_GOOGLE_WORKSPACE_CORPUS_FILE_IDS="<drive-file-id>,<drive-file-id>"
 graphify extract ./docs --google-workspace
 ```
 
-You can also set `GRAPHIFY_GOOGLE_WORKSPACE=1`. Graphify exports shortcuts into
-`graphify-out/converted/` as Markdown sidecars, then extracts those files.
+You can also set `GRAPHIFY_GOOGLE_WORKSPACE=1`. Shortcut files can be committed
+by anyone, and export runs with your `gws` login, so graphify only exports Drive
+file ids you list in `GRAPHIFY_GOOGLE_WORKSPACE_ALLOW_FILE_IDS`. Allowed exports
+are written to `graphify-out/converted/` as Markdown sidecars; only ids also
+listed in `GRAPHIFY_GOOGLE_WORKSPACE_CORPUS_FILE_IDS` are extracted (and sent to
+your model). A shortcut whose id fields disagree, or whose URL is not an
+`https://docs.google.com` / `https://drive.google.com` URL, is skipped.
 
 ---
 
