@@ -151,6 +151,131 @@ def _gh(*args: str) -> list | dict | None:
         return None
 
 
+_REPO_SEGMENT_RE = re.compile(r"^[A-Za-z0-9_.][A-Za-z0-9_.-]*$")
+_SCP_REMOTE_RE = re.compile(r"^(?:[^@/:]+@)?([^/:]+):(.+)$")
+REPO_ALLOWLIST_ENV = "GRAPHIFY_GH_REPO_ALLOWLIST"
+
+
+@dataclass(frozen=True)
+class RepoRef:
+    host: str | None
+    owner: str
+    name: str
+
+    @property
+    def key(self) -> tuple[str, str]:
+        return self.owner.lower(), self.name.lower()
+
+    def gh_arg(self) -> str:
+        """Value for ``gh --repo``; never derived from a caller's raw string."""
+        return f"{self.host}/{self.owner}/{self.name}" if self.host else f"{self.owner}/{self.name}"
+
+    def same_repo(self, other: "RepoRef") -> bool:
+        if self.key != other.key:
+            return False
+        return self.host is None or other.host is None or self.host == other.host
+
+
+def parse_repo_ref(value: str | None) -> RepoRef | None:
+    """Parse ``owner/name``, ``host/owner/name`` or a git/https/ssh remote URL."""
+    if not isinstance(value, str):
+        return None
+    raw = value.strip()
+    if not raw:
+        return None
+    host: str | None
+    if "://" in raw:
+        from urllib.parse import urlsplit
+        try:
+            parsed = urlsplit(raw)
+            host = parsed.hostname
+        except ValueError:
+            return None
+        if not host:
+            return None
+        parts = parsed.path.strip("/").split("/")
+    elif (m := _SCP_REMOTE_RE.match(raw)) is not None:
+        host = m.group(1)
+        parts = m.group(2).strip("/").split("/")
+    else:
+        parts = raw.split("/")
+        if len(parts) == 3:
+            host, parts = parts[0], parts[1:]
+        else:
+            host = None
+    if len(parts) != 2:
+        return None
+    owner, name = parts
+    if name.endswith(".git"):
+        name = name[:-4]
+    if host is not None:
+        host = host.lower()
+        if host.startswith("www."):
+            host = host[4:]
+        if not host or not _REPO_SEGMENT_RE.match(host):
+            return None
+    if not (_REPO_SEGMENT_RE.match(owner) and _REPO_SEGMENT_RE.match(name)):
+        return None
+    return RepoRef(host=host, owner=owner, name=name)
+
+
+def _git_checkout_root(start: Path) -> Path | None:
+    for d in (start, *start.parents):
+        if (d / ".git").exists():
+            return d
+    return None
+
+
+def served_origin_repo(graph_path: str | Path) -> RepoRef | None:
+    """GitHub repo of the git checkout containing *graph_path* (its origin remote)."""
+    root = _git_checkout_root(Path(graph_path).resolve().parent)
+    if root is None:
+        return None
+    try:
+        result = subprocess.run(
+            ["git", "remote", "get-url", "origin"],
+            cwd=str(root), capture_output=True, text=True, timeout=5,
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+        return None
+    if result.returncode != 0:
+        return None
+    return parse_repo_ref(result.stdout.strip())
+
+
+def repo_allowlist() -> list[RepoRef]:
+    entries = os.environ.get(REPO_ALLOWLIST_ENV, "")
+    return [r for r in (parse_repo_ref(e) for e in entries.split(",")) if r is not None]
+
+
+def resolve_scoped_repo(requested: str | None, graph_path: str | Path) -> str:
+    """Return the ``gh --repo`` value a graph-serving tool may query.
+
+    Only the served graph's origin, or a repo listed in
+    GRAPHIFY_GH_REPO_ALLOWLIST, is ever returned, and the returned value is
+    built from that trusted entry rather than from *requested*. Raises
+    ValueError when nothing permitted matches.
+    """
+    served = served_origin_repo(graph_path)
+    if not requested:
+        if served is None:
+            raise ValueError(
+                "could not determine the GitHub repository of the served graph "
+                "(no git origin remote found above graph.json)"
+            )
+        return served.gh_arg()
+    wanted = parse_repo_ref(requested)
+    if wanted is not None:
+        candidates = ([served] if served is not None else []) + repo_allowlist()
+        for candidate in candidates:
+            if wanted.same_repo(candidate):
+                return candidate.gh_arg()
+    raise ValueError(
+        "repo is not the served graph's origin and is not listed in "
+        f"{REPO_ALLOWLIST_ENV}"
+    )
+
+
 def _detect_default_branch(repo: str | None = None) -> str:
     """Auto-detect the repo's default branch via gh, then git, then fall back to 'main'."""
     # Try gh first — works for any repo, not just the current directory

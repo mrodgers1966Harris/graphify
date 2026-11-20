@@ -931,7 +931,10 @@ def _build_server(graph_path: str):
                     "type": "object",
                     "properties": {
                         "base": {"type": "string", "description": "Base branch to filter PRs by (auto-detected if omitted)"},
-                        "repo": {"type": "string", "description": "GitHub repo (owner/repo). Defaults to current repo."},
+                        "repo": {"type": "string", "description": (
+                            "GitHub repo (owner/repo). Defaults to the origin remote of the served graph's checkout; "
+                            "other repos must be listed in GRAPHIFY_GH_REPO_ALLOWLIST."
+                        )},
                     },
                 },
             ),
@@ -946,7 +949,10 @@ def _build_server(graph_path: str):
                     "type": "object",
                     "properties": {
                         "pr_number": {"type": "integer", "description": "PR number to analyse"},
-                        "repo": {"type": "string", "description": "GitHub repo (owner/repo). Defaults to current repo."},
+                        "repo": {"type": "string", "description": (
+                            "GitHub repo (owner/repo). Defaults to the origin remote of the served graph's checkout; "
+                            "other repos must be listed in GRAPHIFY_GH_REPO_ALLOWLIST."
+                        )},
                     },
                     "required": ["pr_number"],
                 },
@@ -962,7 +968,10 @@ def _build_server(graph_path: str):
                     "type": "object",
                     "properties": {
                         "base": {"type": "string", "description": "Base branch to filter PRs by (auto-detected if omitted)"},
-                        "repo": {"type": "string", "description": "GitHub repo (owner/repo). Defaults to current repo."},
+                        "repo": {"type": "string", "description": (
+                            "GitHub repo (owner/repo). Defaults to the origin remote of the served graph's checkout; "
+                            "other repos must be listed in GRAPHIFY_GH_REPO_ALLOWLIST."
+                        )},
                     },
                 },
             ),
@@ -1146,9 +1155,16 @@ def _build_server(graph_path: str):
         prefix = ("\n".join(warnings) + "\n") if warnings else ""
         return prefix + f"Shortest path ({hops} hops):\n  " + " ".join(segments)
 
+    def _scoped_repo(arguments: dict) -> str:
+        from graphify.prs import resolve_scoped_repo
+        return resolve_scoped_repo(arguments.get("repo") or None, active_graph_path)
+
     def _tool_list_prs(arguments: dict) -> str:
         from graphify.prs import fetch_prs, fetch_worktrees, format_prs_text, _detect_default_branch
-        repo = arguments.get("repo") or None
+        try:
+            repo = _scoped_repo(arguments)
+        except ValueError as e:
+            return f"Error: {e}"
         base = arguments.get("base") or _detect_default_branch(repo)
         try:
             prs = fetch_prs(repo=repo, base=base)
@@ -1162,12 +1178,14 @@ def _build_server(graph_path: str):
     def _tool_get_pr_impact(arguments: dict) -> str:
         from graphify.prs import fetch_pr_files, compute_pr_impact, _gh, _parse_ci
         number = int(arguments["pr_number"])
-        repo = arguments.get("repo") or None
+        try:
+            repo = _scoped_repo(arguments)
+        except ValueError as e:
+            return f"Error: {e}"
         # Use gh pr view directly — works for any base branch, not just the default
         view_args = ["pr", "view", str(number), "--json",
-                     "title,headRefName,baseRefName,author,isDraft,reviewDecision,statusCheckRollup,updatedAt"]
-        if repo:
-            view_args += ["--repo", repo]
+                     "title,headRefName,baseRefName,author,isDraft,reviewDecision,statusCheckRollup,updatedAt",
+                     "--repo", repo]
         pr_data = _gh(*view_args)
         if pr_data is None:
             return f"PR #{number} not found or gh not authenticated."
@@ -1192,7 +1210,10 @@ def _build_server(graph_path: str):
     def _tool_triage_prs(arguments: dict) -> str:
         from concurrent.futures import ThreadPoolExecutor, as_completed
         from graphify.prs import fetch_prs, fetch_worktrees, fetch_pr_files, compute_pr_impact, _STATUS_ORDER, _detect_default_branch
-        repo = arguments.get("repo") or None
+        try:
+            repo = _scoped_repo(arguments)
+        except ValueError as e:
+            return f"Error: {e}"
         base = arguments.get("base") or _detect_default_branch(repo)
         try:
             prs = fetch_prs(repo=repo, base=base)
