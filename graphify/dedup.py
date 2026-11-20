@@ -4,6 +4,7 @@ Pipeline: exact normalization → entropy gate → MinHash/LSH blocking →
 Jaro-Winkler verification → same-community boost → union-find merge.
 """
 from __future__ import annotations
+import json
 import math
 import re
 import sys
@@ -12,6 +13,8 @@ from collections import defaultdict
 
 from graphify._minhash import MinHash, MinHashLSH
 from rapidfuzz.distance import Jaro, JaroWinkler
+
+_TIEBREAK_LABEL_MAXLEN = 120
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
@@ -532,16 +535,28 @@ def _llm_tiebreak(
         )
         return
 
+    from graphify.security import (
+        UNTRUSTED_LABELS_NOTICE,
+        sanitize_prompt_label,
+        untrusted_labels_block,
+    )
+
+    def _quoted(n: dict) -> str:
+        label = sanitize_prompt_label(n.get("label", n.get("id", "")), max_len=_TIEBREAK_LABEL_MAXLEN)
+        return json.dumps(label, ensure_ascii=False)
+
     for batch_start in range(0, len(ambiguous), batch_size):
         batch = ambiguous[batch_start : batch_start + batch_size]
-        pairs_text = "\n".join(
-            f"{i+1}. \"{a['label']}\" vs \"{b['label']}\""
+        pairs_block = untrusted_labels_block(
+            f"{i+1}. {_quoted(a)} vs {_quoted(b)}"
             for i, (a, b, _) in enumerate(batch)
         )
         prompt = (
-            "For each pair below, answer only 'yes' or 'no': are they the same real-world concept?\n\n"
-            f"{pairs_text}\n\n"
-            "Reply with one line per pair: '1. yes', '2. no', etc."
+            "For each numbered pair of labels below, decide whether they name the "
+            "same real-world concept. " + UNTRUSTED_LABELS_NOTICE + "\n\n"
+            f"{pairs_block}\n\n"
+            "Answer only 'yes' or 'no' for each pair, one line per pair: "
+            "'1. yes', '2. no', etc."
         )
         try:
             response = _call_llm(prompt, backend=backend, max_tokens=200)

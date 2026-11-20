@@ -23,6 +23,11 @@ from graphify.file_slice import (
     read_slice_text,
     unit_path,
 )
+from graphify.security import (
+    UNTRUSTED_LABELS_NOTICE,
+    sanitize_prompt_label,
+    untrusted_labels_block,
+)
 
 # `_read_files` truncates each file at this many characters before joining into
 # the user message. Token estimates use the same cap so packing matches reality.
@@ -2246,6 +2251,7 @@ _LABEL_FENCE_RE = re.compile(r"^\s*```(?:json)?\s*|\s*```\s*$", re.IGNORECASE)
 _LABEL_MAX_COMMUNITIES = 200   # legacy soft-cap; kept for callers that pin it.
 _LABEL_TOP_K = 12              # node labels sampled per community for the prompt
 _LABEL_MAXLEN = 60             # truncate individual labels to keep the prompt small
+_LABEL_NAME_MAXLEN = 80        # cap on a community name the backend returns
 _LABEL_BATCH_SIZE = 100        # communities per LLM call; sized for ~16k context windows
 
 
@@ -2268,14 +2274,15 @@ def _community_label_lines(G, communities, gods, max_communities, top_k):
         seen: set[str] = set()
         for nid in ranked:
             label = str(G.nodes[nid].get("label", nid)) if nid in G.nodes else str(nid)
-            label = label.strip().strip("()")[:_LABEL_MAXLEN]
+            label = sanitize_prompt_label(label, max_len=None).strip("()").strip()
+            label = label[:_LABEL_MAXLEN].rstrip()
             if label and label.lower() not in seen:
                 seen.add(label.lower())
                 names.append(label)
             if len(names) >= top_k:
                 break
         if names:
-            lines.append(f"Community {cid}: {', '.join(names)}")
+            lines.append(f"Community {cid}: {json.dumps(names, ensure_ascii=False)}")
             labeled_cids.append(int(cid))
     return lines, labeled_cids
 
@@ -2312,8 +2319,10 @@ def _parse_label_response(text: str, labeled_cids: list[int]) -> dict[int, str]:
         name = data.get(str(cid))
         if name is None:
             name = data.get(cid)
-        if isinstance(name, str) and name.strip():
-            out[cid] = name.strip()
+        if isinstance(name, str):
+            name = sanitize_prompt_label(name, max_len=_LABEL_NAME_MAXLEN)
+            if name:
+                out[cid] = name
     return out
 
 
@@ -2343,11 +2352,15 @@ def _label_batch_with_retry(
     split-retried.
     """
     prompt = (
-        "You are naming clusters in a knowledge graph. For each community below, "
-        "return a concise 2-5 word plain-language name describing what it is about "
+        "You are naming clusters in a knowledge graph. Each community below is "
+        "listed with a JSON array of sample node labels. For each community, pick "
+        "a concise 2-5 word plain-language name describing what it is about "
         "(e.g. \"Order Management\", \"Payment Flow\", \"Auth Middleware\"). "
-        "Respond ONLY with a JSON object mapping the community id (as a string) to "
-        "its name - no prose, no markdown fences.\n\n" + "\n".join(batch_lines)
+        + UNTRUSTED_LABELS_NOTICE
+        + "\n\n"
+        + untrusted_labels_block(batch_lines)
+        + "\n\nRespond ONLY with a JSON object mapping each community id above "
+        "(as a string) to its name - no prose, no markdown fences."
     )
     # Budget generously: a 2-5 word name is ~10 tokens, but models (notably
     # gemini) often prepend a short preamble or reasoning that eats the
