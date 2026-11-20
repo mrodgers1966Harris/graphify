@@ -1,8 +1,14 @@
 # graphify MCP server as a shared HTTP service (issue #1143).
 #
 # Build:  docker build -t graphify .
-# Run:    docker run -p 8080:8080 -v "$(pwd)/graphify-out:/data" graphify \
-#             /data/graph.json --transport http --host 0.0.0.0 --api-key "$SECRET"
+# Run:    docker run -p 8080:8080 -e GRAPHIFY_API_KEY \
+#             -e GRAPHIFY_ALLOWED_HOSTS=graph.internal:8080 \
+#             -v "$(pwd)/graphify-out:/data" graphify
+#
+# GRAPHIFY_API_KEY is required: the server binds 0.0.0.0 and refuses to start
+# on a non-loopback address without a key. GRAPHIFY_ALLOWED_HOSTS lists the
+# Host names clients use to reach the container (localhost is always allowed);
+# requests with any other Host or Origin header are rejected.
 #
 # Builds from source so the image includes the Streamable HTTP transport even
 # before it lands on PyPI. The graph.json is mounted at runtime (-v), never

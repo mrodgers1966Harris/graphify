@@ -437,7 +437,7 @@ kimi mcp add --transport stdio graphify -- python -m graphify.serve graphify-out
 
 # or serve over HTTP so a whole team points at one URL (no local graphify needed):
 python -m graphify.serve graphify-out/graph.json --transport http --port 8080
-python -m graphify.serve graphify-out/graph.json --transport http --host 0.0.0.0 --api-key "$SECRET"
+GRAPHIFY_API_KEY="$SECRET" python -m graphify.serve graphify-out/graph.json --transport http --host 0.0.0.0 --allowed-host graph.internal:8080
 ```
 
 The MCP server gives your assistant structured access: `query_graph`, `get_node`, `get_neighbors`, `shortest_path`, `list_prs`, `get_pr_impact`, `triage_prs`.
@@ -449,20 +449,22 @@ The MCP server gives your assistant structured access: `query_graph`, `get_node`
 | Flag | Default | Purpose |
 |---|---|---|
 | `--transport {stdio,http}` | `stdio` | Transport to serve on |
-| `--host` | `127.0.0.1` | HTTP bind host (use `0.0.0.0` to expose beyond localhost) |
+| `--host` | `127.0.0.1` | HTTP bind host (use `0.0.0.0` to expose beyond localhost; requires `--api-key`) |
 | `--port` | `8080` | HTTP bind port |
 | `--api-key` | env `GRAPHIFY_API_KEY` | Require `Authorization: Bearer <key>` (or `X-API-Key`) |
+| `--allowed-host` | env `GRAPHIFY_ALLOWED_HOSTS` | Extra `Host` header value clients may use (repeatable, `name[:port]` or `name:*`) |
 | `--path` | `/mcp` | HTTP mount path |
 | `--json-response` | off | Return plain JSON instead of SSE streams |
 | `--stateless` | off | No per-session state (for load-balanced / CI deployments) |
 | `--session-timeout` | `3600` | Reap idle stateful sessions after N seconds (`0` disables) |
 
-The default `127.0.0.1` bind is loopback-only. Set `--host 0.0.0.0` **and** `--api-key` together when exposing on a shared host. Run it in a container:
+The default `127.0.0.1` bind is loopback-only. Any other bind (`0.0.0.0`, `::`, a LAN address) refuses to start without an API key. Every request's `Host` (and `Origin`, when sent) must be `localhost`, `127.0.0.1`, `[::1]`, the bind address, or a name passed with `--allowed-host`; anything else is rejected, which blocks DNS-rebinding. Run it in a container:
 
 ```bash
 docker build -t graphify .
-docker run -p 8080:8080 -v "$(pwd)/graphify-out:/data" graphify \
-  /data/graph.json --transport http --host 0.0.0.0 --api-key "$SECRET"
+docker run -p 8080:8080 -e GRAPHIFY_API_KEY \
+  -e GRAPHIFY_ALLOWED_HOSTS=graph.internal:8080 \
+  -v "$(pwd)/graphify-out:/data" graphify
 ```
 
 > **WSL / Linux note:** Ubuntu ships `python3`, not `python`. Use a venv to avoid conflicts:
