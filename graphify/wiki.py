@@ -7,6 +7,7 @@ from urllib.parse import quote
 import networkx as nx
 
 from graphify.build import edge_data
+from graphify.safe_io import ensure_dir, write_text
 
 
 def _safe_filename(name: str) -> str:
@@ -226,7 +227,7 @@ def to_wiki(
     Returns the number of articles written (excluding index.md).
     """
     out = Path(output_dir)
-    out.mkdir(parents=True, exist_ok=True)
+    ensure_dir(out)
 
     if not communities:
         raise ValueError(
@@ -320,16 +321,17 @@ def to_wiki(
     for cid, nodes in communities.items():
         label = labels.get(cid, f"Community {cid}")
         article = _community_article(G, cid, nodes, label, labels, cohesion.get(cid), node_community, resolver)
-        (out / f"{community_slugs[cid]}.md").write_text(article, encoding="utf-8")
+        write_text(out / f"{community_slugs[cid]}.md", article, encoding="utf-8")
         count += 1
 
     for nid, slug in god_articles:
         article = _god_node_article(G, nid, labels, node_community, resolver)
-        (out / f"{slug}.md").write_text(article, encoding="utf-8")
+        write_text(out / f"{slug}.md", article, encoding="utf-8")
         count += 1
 
     # Index
-    (out / "index.md").write_text(
+    write_text(
+        out / "index.md",
         _index_md(communities, labels, god_nodes_data, G.number_of_nodes(), G.number_of_edges(), resolver),
         encoding="utf-8",
     )

@@ -27,11 +27,12 @@ if ! "$PYTHON" -c "import graphify" 2>/dev/null; then
           || "$PYTHON" -m pip install graphifyy -q --break-system-packages 2>&1 | tail -3
     fi
 fi
-# Write interpreter path for all subsequent steps (persists across invocations)
-mkdir -p graphify-out
-"$PYTHON" -c "import sys; open('graphify-out/.graphify_python', 'w', encoding='utf-8').write(sys.executable)"
-# Save scan root so `graphify update` (no args) knows where to look next time
-echo "$(cd INPUT_PATH && pwd)" > graphify-out/.graphify_root
+# Write interpreter path for all subsequent steps (persists across invocations).
+# graphify.safe_io replaces a symlink committed at graphify-out/ paths instead of writing through it.
+"$PYTHON" -c "import sys; from graphify.safe_io import write_text; write_text('graphify-out/.graphify_python', sys.executable, encoding='utf-8')"
+# Save scan root so `graphify update` (no args) knows where to look next time.
+# Not a shell redirect (> graphify-out/.graphify_root): a redirect follows a symlink.
+"$PYTHON" -c "import sys; from graphify.safe_io import write_text; write_text('graphify-out/.graphify_root', sys.argv[1], encoding='utf-8')" "$(cd INPUT_PATH && pwd)"
 ```
 
 If the import succeeds, print nothing and move straight to Step 2.

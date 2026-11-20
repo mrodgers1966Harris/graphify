@@ -577,6 +577,6 @@ def write_tree_html(
     title = f"{tree['name']} — graphify tree viewer"
     header = f"{tree['name']} — Knowledge Graph"
     html = emit_html(tree, title=title, header=header)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(html, encoding="utf-8")
+    from graphify.safe_io import write_text
+    write_text(output_path, html, encoding="utf-8")
     return output_path

@@ -6,7 +6,6 @@ import json
 import math
 import os
 import re
-import shutil
 import sys
 from collections import Counter
 from datetime import date
@@ -14,6 +13,7 @@ from pathlib import Path
 import networkx as nx
 from networkx.readwrite import json_graph
 from graphify.security import sanitize_label
+from graphify.safe_io import ensure_dir, write_bytes, write_text
 from graphify.analyze import _node_community_map
 from graphify.build import edge_data
 
@@ -76,13 +76,13 @@ def backup_if_protected(out_dir: Path) -> "Path | None":
             return backup_dir  # identical content, nothing to do
 
     try:
-        backup_dir.mkdir(parents=True, exist_ok=True)
+        ensure_dir(backup_dir)
         copied = 0
         for name in _BACKUP_ARTIFACTS:
             src = out / name
             if src.exists():
                 try:
-                    shutil.copy2(src, backup_dir / name)
+                    write_bytes(backup_dir / name, src.read_bytes())
                     copied += 1
                 except Exception:
                     pass
@@ -537,8 +537,7 @@ def to_json(G: nx.Graph, communities: dict[int, list[str]], output_path: str, *,
     commit = built_at_commit if built_at_commit is not None else _git_head()
     if commit:
         data["built_at_commit"] = commit
-    with open(output_path, "w", encoding="utf-8") as f:  # nosec
-        json.dump(data, f, indent=2)
+    write_text(output_path, json.dumps(data, indent=2), encoding="utf-8")
     return True
 
 
@@ -625,8 +624,7 @@ def to_cypher(G: nx.Graph, output_path: str) -> None:
             f"MATCH (a {{id: '{u_esc}'}}), (b {{id: '{v_esc}'}}) "
             f"MERGE (a)-[:{rel} {{confidence: '{conf}'}}]->(b);"
         )
-    with open(output_path, "w", encoding="utf-8") as f:  # nosec
-        f.write("\n".join(lines))
+    write_text(output_path, "\n".join(lines), encoding="utf-8")
 
 
 def to_html(
@@ -864,7 +862,7 @@ def to_html(
 </body>
 </html>"""
 
-    Path(output_path).write_text(html, encoding="utf-8")  # nosec
+    write_text(output_path, html, encoding="utf-8")
 
 
 # Keep backward-compatible alias - skill.md calls generate_html
@@ -926,7 +924,7 @@ def to_obsidian(
     Returns the number of node notes + community notes written.
     """
     out = Path(output_dir)
-    out.mkdir(parents=True, exist_ok=True)
+    ensure_dir(out)
 
     # #1506: when the export target is an existing Obsidian vault (a user pointed
     # --obsidian-dir at one), we must not clobber the user's own notes or their
@@ -947,8 +945,7 @@ def to_obsidian(
         if target.exists() and rel_name not in _owned:
             _skipped.append(rel_name)
             return False
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(content, encoding="utf-8")  # nosec
+        write_text(target, content, encoding="utf-8")
         _written.append(rel_name)
         return True
 
@@ -1203,7 +1200,7 @@ def to_obsidian(
     # own notes while still refusing to touch the user's. Warn (once, aggregated)
     # about anything skipped to avoid clobbering a pre-existing file.
     try:
-        _manifest_path.write_text(json.dumps({"files": sorted(set(_written))}, indent=2), encoding="utf-8")
+        write_text(_manifest_path, json.dumps({"files": sorted(set(_written))}, indent=2), encoding="utf-8")
     except OSError:
         pass
     if _skipped:
@@ -1394,7 +1391,7 @@ def to_canvas(
         })
 
     canvas_data = {"nodes": canvas_nodes, "edges": canvas_edges}
-    Path(output_path).write_text(json.dumps(canvas_data, indent=2), encoding="utf-8")  # nosec
+    write_text(output_path, json.dumps(canvas_data, indent=2), encoding="utf-8")
 
 
 def push_to_neo4j(
@@ -1597,7 +1594,10 @@ def to_graphml(
         for key, val in list(H.edges[u, v].items()):
             if val is None:
                 H.edges[u, v][key] = ""
-    nx.write_graphml(H, output_path)
+    import io
+    buf = io.BytesIO()
+    nx.write_graphml(H, buf)
+    write_bytes(output_path, buf.getvalue())
 
 
 def to_svg(
@@ -1665,6 +1665,9 @@ def to_svg(
                   facecolor="#2a2a4e", labelcolor="white", fontsize=8)
 
     plt.tight_layout()
-    plt.savefig(output_path, format="svg", bbox_inches="tight",
+    import io
+    buf = io.BytesIO()
+    plt.savefig(buf, format="svg", bbox_inches="tight",
                 facecolor=fig.get_facecolor())
+    write_bytes(output_path, buf.getvalue())
     plt.close(fig)

@@ -6,7 +6,6 @@ import hashlib
 import json
 import os
 import re
-import tempfile
 from pathlib import Path
 
 # Output directory name — override with GRAPHIFY_OUT env var for worktrees or
@@ -14,6 +13,7 @@ from pathlib import Path
 # absolute path ("/shared/graphify-out"). Single source of truth in graphify.paths
 # (#1423); re-exported here as _GRAPHIFY_OUT for the existing call sites.
 from graphify.paths import GRAPHIFY_OUT as _GRAPHIFY_OUT
+from graphify.safe_io import ensure_dir, write_bytes
 
 # AST cache entries are the output of graphify's own extractor code, so they
 # are only valid for the version that wrote them: keying purely on file
@@ -122,22 +122,8 @@ def _flush_stat_index() -> None:
         return
     p = _stat_index_file(_stat_index_root)
     try:
-        p.parent.mkdir(parents=True, exist_ok=True)
-        fd, tmp = tempfile.mkstemp(dir=p.parent, prefix="stat-index.", suffix=".tmp")
-        try:
-            os.write(fd, json.dumps(_stat_index, separators=(",", ":")).encode())
-            os.close(fd)
-            os.replace(tmp, p)
-        except Exception:
-            try:
-                os.close(fd)
-            except OSError:
-                pass
-            try:
-                os.unlink(tmp)
-            except OSError:
-                pass
-    except OSError:
+        write_bytes(p, json.dumps(_stat_index, separators=(",", ":")).encode())
+    except Exception:
         pass
     _stat_index_dirty = False
 
@@ -339,8 +325,9 @@ def cache_dir(root: Path = Path("."), kind: str = "ast") -> Path:
     d = base / "cache" / kind
     if kind == "ast":
         d = d / f"v{_EXTRACTOR_VERSION}"
+    ensure_dir(d)
+    if kind == "ast":
         _cleanup_stale_ast_entries(d.parent, d)
-    d.mkdir(parents=True, exist_ok=True)
     return d
 
 
@@ -407,28 +394,19 @@ def save_cached(path: Path, result: dict, root: Path = Path("."), kind: str = "a
     h = file_hash(p, root)
     target_dir = cache_dir(root, kind)
     entry = target_dir / f"{h}.json"
-    fd, tmp_path = tempfile.mkstemp(dir=target_dir, prefix=f"{h}.", suffix=".tmp")
-    try:
-        os.write(fd, json.dumps(on_disk).encode())
-        os.close(fd)
+    payload = json.dumps(on_disk).encode()
+    # Windows: the replace can fail with WinError 5 while the target is briefly
+    # locked (AV scanners); retry instead of writing into the existing path.
+    attempts = 5 if os.name == "nt" else 1
+    for attempt in range(attempts):
         try:
-            os.replace(tmp_path, entry)
+            write_bytes(entry, payload)
+            return
         except PermissionError:
-            # Windows: os.replace can fail with WinError 5 if the target is
-            # briefly locked. Fall back to copy-then-delete.
-            import shutil
-            shutil.copy2(tmp_path, entry)
-            os.unlink(tmp_path)
-    except Exception:
-        try:
-            os.close(fd)
-        except OSError:
-            pass
-        try:
-            os.unlink(tmp_path)
-        except OSError:
-            pass
-        raise
+            if attempt == attempts - 1:
+                raise
+            import time
+            time.sleep(0.05 * (attempt + 1))
 
 
 def cached_files(root: Path = Path(".")) -> set[str]:

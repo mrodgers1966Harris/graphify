@@ -98,9 +98,9 @@ if ! "$PYTHON" -c "import graphify" 2>/dev/null; then
           || "$PYTHON" -m pip install graphifyy -q --break-system-packages 2>&1 | tail -3
     fi
 fi
-# Write interpreter path for all subsequent steps (persists across invocations)
-mkdir -p graphify-out
-"$PYTHON" -c "import sys; open('graphify-out/.graphify_python', 'w', encoding='utf-8').write(sys.executable)"
+# Write interpreter path for all subsequent steps (persists across invocations).
+# graphify.safe_io replaces a symlink committed at graphify-out/ paths instead of writing through it.
+"$PYTHON" -c "import sys; from graphify.safe_io import write_text; write_text('graphify-out/.graphify_python', sys.executable, encoding='utf-8')"
 # Force UTF-8 I/O on Windows (prevents garbled CJK/non-ASCII output)
 export PYTHONUTF8=1
 ```
@@ -112,13 +112,15 @@ If the import succeeds, print nothing and move straight to Step 2.
 ### Step 2 - Detect files
 
 ```bash
+# Written from Python, not with a shell redirect (> graphify-out/.graphify_detect.json): a redirect follows a symlink.
 $(cat graphify-out/.graphify_python) -c "
 import json
 from graphify.detect import detect
+from graphify.safe_io import write_text
 from pathlib import Path
 result = detect(Path('INPUT_PATH'))
-print(json.dumps(result))
-" > graphify-out/.graphify_detect.json
+write_text('graphify-out/.graphify_detect.json', json.dumps(result) + '\\n')
+"
 ```
 
 Replace INPUT_PATH with the actual path the user provided. Do NOT cat or print the JSON - read it silently and present a clean summary instead:
@@ -164,7 +166,7 @@ Set it as `GRAPHIFY_WHISPER_PROMPT` in the environment before running the transc
 ```bash
 $(cat graphify-out/.graphify_python) -c "
 import json, os
-from pathlib import Path
+from graphify.safe_io import OutputPath as Path
 from graphify.transcribe import transcribe_all
 
 detect = json.loads(Path('graphify-out/.graphify_detect.json').read_text())
@@ -172,8 +174,8 @@ video_files = detect.get('files', {}).get('video', [])
 prompt = os.environ.get('GRAPHIFY_WHISPER_PROMPT', 'Use proper punctuation and paragraph breaks.')
 
 transcript_paths = transcribe_all(video_files, initial_prompt=prompt)
-print(json.dumps(transcript_paths))
-" > graphify-out/.graphify_transcripts.json
+Path('graphify-out/.graphify_transcripts.json').write_text(json.dumps(transcript_paths))
+"
 ```
 
 After transcription:
@@ -204,7 +206,7 @@ For any code files detected, run AST extraction in parallel with Part B subagent
 $(cat graphify-out/.graphify_python) -c "
 import sys, json
 from graphify.extract import collect_files, extract
-from pathlib import Path
+from graphify.safe_io import OutputPath as Path
 import json
 
 code_files = []
@@ -224,7 +226,15 @@ else:
 
 #### Part B - Semantic extraction (parallel subagents)
 
-**Fast path:** If detection found zero docs, papers, and images (code-only corpus), skip Part B entirely and go straight to Part C. AST handles code - there is nothing for semantic subagents to do.
+**Fast path:** If detection found zero docs, papers, and images (code-only corpus), skip Part B entirely and go straight to Part C. AST handles code - there is nothing for semantic subagents to do. **First write an empty semantic file** so Part C's merge has its input (it reads `.graphify_semantic.json` unconditionally; without this a code-only run hits `FileNotFoundError`):
+
+```bash
+$(cat graphify-out/.graphify_python) -c "
+import json
+from graphify.safe_io import OutputPath as Path
+Path('graphify-out/.graphify_semantic.json').write_text(json.dumps({'nodes':[],'edges':[],'hyperedges':[],'input_tokens':0,'output_tokens':0}), encoding='utf-8')
+"
+```
 
 Before dispatching subagents, print a timing estimate:
 - Load `total_words` and file counts from `graphify-out/.graphify_detect.json`
@@ -242,7 +252,7 @@ Before dispatching any subagents, check which files already have cached extracti
 $(cat graphify-out/.graphify_python) -c "
 import json
 from graphify.cache import check_semantic_cache
-from pathlib import Path
+from graphify.safe_io import OutputPath as Path
 
 detect = json.loads(Path('graphify-out/.graphify_detect.json').read_text())
 # Only content files go to semantic extraction. Code is already covered
@@ -251,6 +261,11 @@ detect = json.loads(Path('graphify-out/.graphify_detect.json').read_text())
 all_files = [f for cat in ('document', 'paper', 'image') for f in detect['files'].get(cat, [])]
 
 cached_nodes, cached_edges, cached_hyperedges, uncached = check_semantic_cache(all_files)
+
+# Subagents write chunk files with the host's own file tool, which may follow a symlink:
+# remove any already present (e.g. committed to the repo) before dispatching.
+for stale in Path('graphify-out').glob('.graphify_chunk_*.json'):
+    stale.unlink()
 
 # Always (re)write the cache file: write hits, else DELETE any leftover from a
 # prior run so Part C never merges a stale .graphify_cached.json (#1392).
@@ -341,7 +356,7 @@ After each subagent call completes, write its result to `graphify-out/.graphify_
 ```bash
 $(cat graphify-out/.graphify_python) -c "
 import json, glob
-from pathlib import Path
+from graphify.safe_io import OutputPath as Path
 from graphify.semantic_cleanup import load_validated_semantic_fragment, sanitize_semantic_fragment
 
 chunks = sorted(glob.glob('graphify-out/.graphify_chunk_*.json'))
@@ -383,7 +398,7 @@ Merge cached + new results into `graphify-out/.graphify_semantic.json`:
 ```bash
 $(cat graphify-out/.graphify_python) -c "
 import json
-from pathlib import Path
+from graphify.safe_io import OutputPath as Path
 from graphify.semantic_cleanup import sanitize_semantic_fragment
 
 cached = json.loads(Path('graphify-out/.graphify_cached.json').read_text()) if Path('graphify-out/.graphify_cached.json').exists() else {'nodes':[],'edges':[],'hyperedges':[]}
@@ -418,7 +433,7 @@ Clean up temp files: `rm -f graphify-out/.graphify_cached.json graphify-out/.gra
 ```bash
 $(cat graphify-out/.graphify_python) -c "
 import sys, json
-from pathlib import Path
+from graphify.safe_io import OutputPath as Path
 from graphify.semantic_cleanup import sanitize_semantic_fragment
 
 ast = json.loads(Path('graphify-out/.graphify_ast.json').read_text())
@@ -462,7 +477,7 @@ from graphify.cluster import cluster, score_all
 from graphify.analyze import god_nodes, surprising_connections, suggest_questions
 from graphify.report import generate
 from graphify.export import to_json
-from pathlib import Path
+from graphify.safe_io import OutputPath as Path
 
 extraction = json.loads(Path('graphify-out/.graphify_extract.json').read_text())
 detection  = json.loads(Path('graphify-out/.graphify_detect.json').read_text())
@@ -522,7 +537,7 @@ from graphify.build import build_from_json
 from graphify.cluster import score_all
 from graphify.analyze import god_nodes, surprising_connections, suggest_questions
 from graphify.report import generate
-from pathlib import Path
+from graphify.safe_io import OutputPath as Path
 
 extraction = json.loads(Path('graphify-out/.graphify_extract.json').read_text())
 detection  = json.loads(Path('graphify-out/.graphify_detect.json').read_text())
@@ -788,7 +803,7 @@ Print the output directly in chat. If `total_words <= 5000`, skip silently - the
 ```bash
 $(cat graphify-out/.graphify_python) -c "
 import json
-from pathlib import Path
+from graphify.safe_io import OutputPath as Path
 from datetime import datetime, timezone
 from graphify.detect import save_manifest
 
@@ -869,8 +884,7 @@ if [ ! -f graphify-out/.graphify_python ]; then
     else
         PYTHON="python3"
     fi
-    mkdir -p graphify-out
-    "$PYTHON" -c "import sys; open('graphify-out/.graphify_python', 'w').write(sys.executable)"
+    "$PYTHON" -c "import sys; from graphify.safe_io import write_text; write_text('graphify-out/.graphify_python', sys.executable, encoding='utf-8')"
 fi
 ```
 
@@ -884,7 +898,7 @@ Use when you've added or modified files since the last run. Only re-extracts cha
 $(cat graphify-out/.graphify_python) -c "
 import sys, json
 from graphify.detect import detect_incremental, save_manifest
-from pathlib import Path
+from graphify.safe_io import OutputPath as Path
 
 result = detect_incremental(Path('INPUT_PATH'))
 new_total = result.get('new_total', 0)
@@ -928,8 +942,8 @@ if [ ! -f graphify-out/.graphify_extract.json ]; then
     echo '[graphify update] Only deletions -- creating empty extraction for merge.'
     $(cat graphify-out/.graphify_python) -c "
 import json
-from pathlib import Path
-Path('graphify-out/.graphify_extract.json').write_text(json.dumps({'nodes':[],'edges':[],'hyperedges':[],'input_tokens':0,'output_tokens':0}), encoding='utf-8')
+from graphify.safe_io import OutputPath as Path
+Path('graphify-out/.graphify_extract.json').write_text(json.dumps({'nodes': [], 'edges': [], 'hyperedges': [], 'input_tokens': 0, 'output_tokens': 0}), encoding='utf-8')
 "
 fi
 ```
@@ -987,55 +1001,20 @@ if old_data:
 "
 ```
 
-Before the merge step, save the old graph: `cp graphify-out/graph.json graphify-out/.graphify_old.json`
+Before the merge step, save the old graph (not with `cp`, which writes through a symlink at the destination): `$(cat graphify-out/.graphify_python) -c "from graphify.safe_io import OutputPath as Path; Path('graphify-out/.graphify_old.json').write_bytes(Path('graphify-out/graph.json').read_bytes())"`
 Clean up after: `rm -f graphify-out/.graphify_old.json`
 
 ---
 
 ## For --cluster-only
 
-Skip Steps 1-3. Load the existing graph from `graphify-out/graph.json` and re-run clustering:
+Skip Steps 1–3. Re-run clustering on the existing graph:
 
 ```bash
-$(cat graphify-out/.graphify_python) -c "
-import sys, json
-from graphify.cluster import cluster, score_all
-from graphify.analyze import god_nodes, surprising_connections
-from graphify.report import generate
-from graphify.export import to_json
-from networkx.readwrite import json_graph
-import networkx as nx
-from pathlib import Path
-
-data = json.loads(Path('graphify-out/graph.json').read_text())
-G = json_graph.node_link_graph(data, edges='links')
-
-detection = {'total_files': 0, 'total_words': 99999, 'needs_graph': True, 'warning': None,
-             'files': {'code': [], 'document': [], 'paper': []}}
-tokens = {'input': 0, 'output': 0}
-
-communities = cluster(G)
-cohesion = score_all(G, communities)
-gods = god_nodes(G)
-surprises = surprising_connections(G, communities)
-labels = {cid: 'Community ' + str(cid) for cid in communities}
-
-report = generate(G, communities, cohesion, labels, gods, surprises, detection, tokens, '.')
-Path('graphify-out/GRAPH_REPORT.md').write_text(report)
-to_json(G, communities, 'graphify-out/graph.json')
-
-analysis = {
-    'communities': {str(k): v for k, v in communities.items()},
-    'cohesion': {str(k): v for k, v in cohesion.items()},
-    'gods': gods,
-    'surprises': surprises,
-}
-Path('graphify-out/.graphify_analysis.json').write_text(json.dumps(analysis, indent=2))
-print(f'Re-clustered: {len(communities)} communities')
-"
+$(cat graphify-out/.graphify_python) -m graphify cluster-only .
 ```
 
-Then run Steps 5-9 as normal (label communities, generate viz, benchmark, clean up, report).
+`graphify cluster-only .` is **self-contained**: it re-clusters, names communities, and regenerates `GRAPH_REPORT.md`, `graph.json`, and `graph.html` from the existing graph. **Do not re-run Steps 5–9** — they read intermediate files (`.graphify_extract.json`, `.graphify_detect.json`, `.graphify_analysis.json`) that a prior build's cleanup (Step 9) already deleted, so they raise `FileNotFoundError` (#1392). When it finishes, present the refreshed `GRAPH_REPORT.md` summary as usual.
 
 ---
 

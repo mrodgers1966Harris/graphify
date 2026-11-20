@@ -618,7 +618,8 @@ def convert_office_file(path: Path, out_dir: Path) -> Path | None:
     if not text.strip():
         return None
 
-    out_dir.mkdir(parents=True, exist_ok=True)
+    from graphify.safe_io import ensure_dir
+    ensure_dir(out_dir)
     # Use a stable name derived from the original path to avoid collisions.
     # Normalize the resolved path to NFC before hashing: on macOS (HFS+/APFS)
     # os.walk/rglob return filenames in NFD, while Python string literals and
@@ -643,10 +644,8 @@ def convert_office_file(path: Path, out_dir: Path) -> Path | None:
     except OSError:
         if out_path.exists():
             return out_path
-    out_path.write_text(
-        f"<!-- converted from {path.name} -->\n\n{text}",
-        encoding="utf-8",
-    )
+    from graphify.safe_io import write_text
+    write_text(out_path, f"<!-- converted from {path.name} -->\n\n{text}", encoding="utf-8")
     return out_path
 
 
@@ -1394,8 +1393,8 @@ def save_manifest(
         # their absolute form so the manifest round-trips on the saving
         # machine even when not every entry can be portably encoded.
         manifest = {_to_relative_for_storage(k, root): v for k, v in manifest.items()}
-    Path(manifest_path).parent.mkdir(parents=True, exist_ok=True)
-    Path(manifest_path).write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    from graphify.safe_io import write_text
+    write_text(manifest_path, json.dumps(manifest, indent=2), encoding="utf-8")
 
 
 def detect_incremental(

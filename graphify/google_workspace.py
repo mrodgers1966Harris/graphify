@@ -18,6 +18,8 @@ import urllib.parse
 from pathlib import Path
 from typing import Callable, Any
 
+from graphify.safe_io import ensure_dir, write_text
+
 
 GOOGLE_WORKSPACE_EXTENSIONS = {".gdoc", ".gsheet", ".gslides"}
 
@@ -163,7 +165,7 @@ def convert_google_workspace_file(
         return None
 
     shortcut = read_google_shortcut(path)
-    out_dir.mkdir(parents=True, exist_ok=True)
+    ensure_dir(out_dir)
     out_path = _sidecar_path(path, out_dir)
 
     if ext == ".gdoc":
@@ -176,7 +178,7 @@ def convert_google_workspace_file(
             tmp_path.unlink(missing_ok=True)
         if not body.strip():
             return None
-        out_path.write_text(_with_frontmatter(path, shortcut, body, "text/markdown"), encoding="utf-8")
+        write_text(out_path, _with_frontmatter(path, shortcut, body, "text/markdown"), encoding="utf-8")
         return out_path
 
     if ext == ".gslides":
@@ -189,7 +191,7 @@ def convert_google_workspace_file(
             tmp_path.unlink(missing_ok=True)
         if not body.strip():
             return None
-        out_path.write_text(_with_frontmatter(path, shortcut, body, "text/plain"), encoding="utf-8")
+        write_text(out_path, _with_frontmatter(path, shortcut, body, "text/plain"), encoding="utf-8")
         return out_path
 
     if ext == ".gsheet":
@@ -209,7 +211,8 @@ def convert_google_workspace_file(
             tmp_path.unlink(missing_ok=True)
         if not body.strip():
             return None
-        out_path.write_text(
+        write_text(
+            out_path,
             _with_frontmatter(
                 path,
                 shortcut,

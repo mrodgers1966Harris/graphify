@@ -116,10 +116,12 @@ if (-not $GRAPHIFY_PYTHON) {
     $GRAPHIFY_PYTHON = Find-GraphifyPython
 }
 
-# Save interpreter path — all subsequent steps read this
-$GRAPHIFY_PYTHON | Out-File -FilePath graphify-out\.graphify_python -Encoding utf8 -NoNewline
+# Save interpreter path — all subsequent steps read this. Written through graphify.safe_io,
+# not Out-File, which would follow a symlink committed at these graphify-out paths.
+$GRAPHIFY_WRITE = "import sys; from graphify.safe_io import write_text; write_text(sys.argv[1], sys.argv[2], encoding='utf-8')"
+& $GRAPHIFY_PYTHON -c $GRAPHIFY_WRITE graphify-out\.graphify_python $GRAPHIFY_PYTHON
 # Save scan root so `graphify update` (no args) knows where to look next time
-(Resolve-Path INPUT_PATH).Path | Out-File -FilePath graphify-out\.graphify_root -Encoding utf8 -NoNewline
+& $GRAPHIFY_PYTHON -c $GRAPHIFY_WRITE graphify-out\.graphify_root (Resolve-Path INPUT_PATH).Path
 ```
 
 If the import succeeds, print nothing and move straight to Step 2.
@@ -129,13 +131,15 @@ If the import succeeds, print nothing and move straight to Step 2.
 ### Step 2 - Detect files
 
 ```bash
+# Written from Python, not with a shell redirect (> graphify-out/.graphify_detect.json): a redirect follows a symlink.
 $(cat graphify-out/.graphify_python) -c "
 import json
 from graphify.detect import detect
+from graphify.safe_io import write_text
 from pathlib import Path
 result = detect(Path('INPUT_PATH'))
-print(json.dumps(result, ensure_ascii=False))
-" > graphify-out/.graphify_detect.json
+write_text('graphify-out/.graphify_detect.json', json.dumps(result, ensure_ascii=False) + '\\n', encoding='utf-8')
+"
 ```
 
 Replace INPUT_PATH with the actual path the user provided. Do NOT cat or print the JSON - read it silently and present a clean summary instead:
@@ -194,7 +198,7 @@ For any code files detected, run AST extraction in parallel with Part B subagent
 $(cat graphify-out/.graphify_python) -c "
 import sys, json
 from graphify.extract import collect_files, extract
-from pathlib import Path
+from graphify.safe_io import OutputPath as Path
 import json
 
 code_files = []
@@ -219,7 +223,7 @@ else:
 ```bash
 $(cat graphify-out/.graphify_python) -c "
 import json
-from pathlib import Path
+from graphify.safe_io import OutputPath as Path
 Path('graphify-out/.graphify_semantic.json').write_text(json.dumps({'nodes':[],'edges':[],'hyperedges':[],'input_tokens':0,'output_tokens':0}), encoding='utf-8')
 "
 ```
@@ -240,7 +244,7 @@ Before dispatching any subagents, check which files already have cached extracti
 $(cat graphify-out/.graphify_python) -c "
 import json
 from graphify.cache import check_semantic_cache
-from pathlib import Path
+from graphify.safe_io import OutputPath as Path
 
 detect = json.loads(Path('graphify-out/.graphify_detect.json').read_text(encoding=\"utf-8\"))
 # Only content files go to semantic extraction. Code is already covered structurally
@@ -249,6 +253,11 @@ detect = json.loads(Path('graphify-out/.graphify_detect.json').read_text(encodin
 all_files = [f for cat in ('document', 'paper', 'image') for f in detect['files'].get(cat, [])]
 
 cached_nodes, cached_edges, cached_hyperedges, uncached = check_semantic_cache(all_files, root='INPUT_PATH')
+
+# Subagents write chunk files with the host's own file tool, which may follow a symlink:
+# remove any already present (e.g. committed to the repo) before dispatching.
+for stale in Path('graphify-out').glob('.graphify_chunk_*.json'):
+    stale.unlink()
 
 # Always (re)write the cache file: write hits, else DELETE any leftover from a prior
 # run so Part C never merges a stale .graphify_cached.json (#1392).
@@ -307,7 +316,7 @@ Merge all chunk files into `.graphify_semantic_new.json`. **After each Agent cal
 ```bash
 $(cat graphify-out/.graphify_python) -c "
 import json, glob
-from pathlib import Path
+from graphify.safe_io import OutputPath as Path
 
 chunks = sorted(glob.glob('graphify-out/.graphify_chunk_*.json'))
 all_nodes, all_edges, all_hyperedges = [], [], []
@@ -344,7 +353,7 @@ Merge cached + new results into `graphify-out/.graphify_semantic.json`:
 ```bash
 $(cat graphify-out/.graphify_python) -c "
 import json
-from pathlib import Path
+from graphify.safe_io import OutputPath as Path
 
 cached = json.loads(Path('graphify-out/.graphify_cached.json').read_text(encoding=\"utf-8\")) if Path('graphify-out/.graphify_cached.json').exists() else {'nodes':[],'edges':[],'hyperedges':[]}
 new = json.loads(Path('graphify-out/.graphify_semantic_new.json').read_text(encoding=\"utf-8\")) if Path('graphify-out/.graphify_semantic_new.json').exists() else {'nodes':[],'edges':[],'hyperedges':[]}
@@ -377,7 +386,7 @@ Clean up temp files: `rm -f graphify-out/.graphify_cached.json graphify-out/.gra
 ```bash
 $(cat graphify-out/.graphify_python) -c "
 import sys, json
-from pathlib import Path
+from graphify.safe_io import OutputPath as Path
 
 ast = json.loads(Path('graphify-out/.graphify_ast.json').read_text(encoding=\"utf-8\"))
 sem = json.loads(Path('graphify-out/.graphify_semantic.json').read_text(encoding=\"utf-8\"))
@@ -419,7 +428,7 @@ from graphify.cluster import cluster, score_all
 from graphify.analyze import god_nodes, surprising_connections, suggest_questions
 from graphify.report import generate
 from graphify.export import to_json
-from pathlib import Path
+from graphify.safe_io import OutputPath as Path
 
 extraction = json.loads(Path('graphify-out/.graphify_extract.json').read_text(encoding=\"utf-8\"))
 detection  = json.loads(Path('graphify-out/.graphify_detect.json').read_text(encoding=\"utf-8\"))
@@ -508,7 +517,7 @@ from graphify.build import build_from_json
 from graphify.cluster import score_all
 from graphify.analyze import god_nodes, surprising_connections, suggest_questions
 from graphify.report import generate
-from pathlib import Path
+from graphify.safe_io import OutputPath as Path
 
 extraction = json.loads(Path('graphify-out/.graphify_extract.json').read_text(encoding=\"utf-8\"))
 detection  = json.loads(Path('graphify-out/.graphify_detect.json').read_text(encoding=\"utf-8\"))
@@ -567,7 +576,7 @@ These run only when their flag is present (`--wiki`, `--neo4j`/`--neo4j-push`, `
 ```bash
 $(cat graphify-out/.graphify_python) -c "
 import json
-from pathlib import Path
+from graphify.safe_io import OutputPath as Path
 from datetime import datetime, timezone
 from graphify.detect import save_manifest
 
@@ -655,8 +664,7 @@ if [ ! -f graphify-out/.graphify_python ]; then
     else
         PYTHON="python3"
     fi
-    mkdir -p graphify-out
-    "$PYTHON" -c "import sys; open('graphify-out/.graphify_python', 'w', encoding='utf-8').write(sys.executable)"
+    "$PYTHON" -c "import sys; from graphify.safe_io import write_text; write_text('graphify-out/.graphify_python', sys.executable, encoding='utf-8')"
 fi
 ```
 
