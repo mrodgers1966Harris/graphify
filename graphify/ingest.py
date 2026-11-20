@@ -61,18 +61,28 @@ def _safe_filename(url: str, suffix: str) -> str:
     return name + suffix
 
 
+_YOUTUBE_HOSTS = ("youtube.com", "youtu.be", "youtube-nocookie.com")
+
+
+def _host_in(host: str, domains: tuple[str, ...]) -> bool:
+    return any(host == d or host.endswith("." + d) for d in domains)
+
+
 def _detect_url_type(url: str) -> str:
     """Classify the URL for targeted extraction."""
     lower = url.lower()
+    parsed = urllib.parse.urlparse(url)
+    host = (parsed.hostname or "").rstrip(".")
     if "twitter.com" in lower or "x.com" in lower:
         return "tweet"
     if "arxiv.org" in lower:
         return "arxiv"
     if "github.com" in lower:
         return "github"
-    if "youtube.com" in lower or "youtu.be" in lower:
+    # Video URLs are handed to yt-dlp, so match on the host only: a substring
+    # match would let any attacker-controlled host opt into the downloader.
+    if _host_in(host, _YOUTUBE_HOSTS):
         return "youtube"
-    parsed = urllib.parse.urlparse(url)
     path = parsed.path.lower()
     if path.endswith(".pdf"):
         return "pdf"

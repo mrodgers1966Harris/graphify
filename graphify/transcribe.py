@@ -42,6 +42,104 @@ def _get_yt_dlp():
         ) from exc
 
 
+def _guarded_youtube_dl_class(yt_dlp):
+    """Return a YoutubeDL subclass whose every network connection is SSRF-checked.
+
+    yt-dlp follows redirects, playlist entries and fragment URLs on its own, so
+    validating only the URL handed to it is not enough. This class:
+
+    - routes all requests through one urllib-based handler (no requests /
+      curl_cffi / websockets handlers, no proxy, ftp or file support) whose
+      sockets are opened by ``_connect_validated``: the address that is
+      checked is the exact address that is connected to, so redirects,
+      media URLs and DNS rebinding cannot reach a private/reserved IP;
+    - refuses downloads that yt-dlp would hand to an external program
+      (ffmpeg, rtmpdump, aria2c, ...), since those open their own sockets.
+    """
+    import functools
+    import http.client
+    import ipaddress
+    import urllib.request
+
+    from yt_dlp.downloader import get_suitable_downloader
+    from yt_dlp.downloader.dash import DashSegmentsFD
+    from yt_dlp.downloader.hls import HlsFD
+    from yt_dlp.downloader.http import HttpFD
+    from yt_dlp.networking import _helper, _urllib
+    from yt_dlp.utils import DownloadError
+
+    from graphify.security import _ip_is_blocked
+
+    def _connect_validated(addrinfo, timeout, source_address):
+        addr = addrinfo[4][0]
+        try:
+            blocked = _ip_is_blocked(ipaddress.ip_address(addr))
+        except ValueError:
+            blocked = True
+        if blocked:
+            raise OSError(f"SSRF blocked: refusing to connect to private/reserved address {addr}")
+        return _helper._socket_connect(addrinfo, timeout, source_address)
+
+    _create_guarded_connection = functools.partial(
+        _helper.create_connection, _create_socket_func=_connect_validated,
+    )
+
+    def _guarded_http_connection(http_class, source_address, *args, **kwargs):
+        conn = http_class(*args, **kwargs)
+        conn._create_connection = _create_guarded_connection
+        if source_address is not None:
+            conn.source_address = (source_address, 0)
+        return conn
+
+    class _GuardedHTTPHandler(_urllib.HTTPHandler):
+        def http_open(self, req):
+            return self.do_open(functools.partial(
+                _guarded_http_connection, http.client.HTTPConnection, self._source_address), req)
+
+        def https_open(self, req):
+            return self.do_open(functools.partial(
+                _guarded_http_connection, http.client.HTTPSConnection, self._source_address),
+                req, context=self._context)
+
+    class GraphifyGuardedRH(_urllib.UrllibRH):
+        _SUPPORTED_URL_SCHEMES = ('http', 'https')
+        RH_NAME = 'graphify-guarded-urllib'
+
+        def _create_instance(self, proxies, cookiejar, legacy_ssl_support=None):
+            opener = urllib.request.OpenerDirector()
+            for handler in (
+                _GuardedHTTPHandler(
+                    debuglevel=int(bool(self.verbose)),
+                    context=self._make_sslcontext(legacy_ssl_support=legacy_ssl_support),
+                    source_address=self.source_address),
+                urllib.request.HTTPCookieProcessor(cookiejar),
+                urllib.request.UnknownHandler(),
+                urllib.request.HTTPDefaultErrorHandler(),
+                urllib.request.HTTPErrorProcessor(),
+                _urllib.RedirectHandler(),
+            ):
+                opener.add_handler(handler)
+            opener.addheaders = []
+            return opener
+
+    native_downloaders = (HttpFD, HlsFD, DashSegmentsFD)
+
+    class GuardedYoutubeDL(yt_dlp.YoutubeDL):
+        def build_request_director(self, handlers, preferences=None):
+            return super().build_request_director([GraphifyGuardedRH], preferences)
+
+        def dl(self, name, info, subtitle=False, test=False):
+            if info.get('url'):
+                fd = get_suitable_downloader(info, self.params, to_stdout=(name == '-'))
+                if fd not in native_downloaders:
+                    raise DownloadError(
+                        f"refusing {info.get('protocol')!r} download: it needs "
+                        f"{getattr(fd, '__name__', fd)}, which bypasses graphify's network guard")
+            return super().dl(name, info, subtitle=subtitle, test=test)
+
+    return GuardedYoutubeDL
+
+
 def is_url(path: str) -> bool:
     """Return True if the string looks like a URL rather than a file path."""
     return any(path.startswith(p) for p in URL_PREFIXES)
@@ -53,9 +151,12 @@ def download_audio(url: str, output_dir: Path) -> Path:
     Returns the path to the downloaded audio file (.m4a or .opus).
     Uses cached file if already downloaded.
     """
+    import tempfile
+
     from graphify.security import validate_url
     validate_url(url)  # blocks private IPs, bad schemes before yt-dlp runs
     yt_dlp = _get_yt_dlp()
+    GuardedYoutubeDL = _guarded_youtube_dl_class(yt_dlp)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # yt-dlp uses %(title)s which can be long/weird — use a stable name based on URL hash
@@ -70,18 +171,23 @@ def download_audio(url: str, output_dir: Path) -> Path:
             print(f"  cached audio: {candidate.name}")
             return candidate
 
-    ydl_opts = {
-        'format': 'bestaudio[ext=m4a]/bestaudio/best',
-        'outtmpl': out_template,
-        'quiet': True,
-        'no_warnings': True,
-        'noplaylist': True,
-        'postprocessors': [],  # no ffmpeg needed — use native audio
-    }
-
     print(f"  downloading audio: {url[:80]} ...", flush=True)
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url, download=True)
+    # An empty ffmpeg_location makes ffmpeg unavailable to yt-dlp, so the native
+    # HLS downloader cannot fall back to an ffmpeg process that fetches URLs
+    # outside the guarded connection.
+    with tempfile.TemporaryDirectory(prefix="graphify-no-ffmpeg-") as no_ffmpeg_dir:
+        ydl_opts = {
+            'format': 'bestaudio[ext=m4a]/bestaudio/best',
+            'outtmpl': out_template,
+            'quiet': True,
+            'no_warnings': True,
+            'noplaylist': True,
+            'postprocessors': [],  # no ffmpeg needed — use native audio
+            'proxy': '',
+            'ffmpeg_location': no_ffmpeg_dir,
+        }
+        with GuardedYoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
         ext = info.get('ext', 'm4a')
         downloaded = output_dir / f"yt_{url_hash}.{ext}"
         if not downloaded.exists():
