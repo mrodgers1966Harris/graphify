@@ -107,7 +107,7 @@ def test_read_files_keys_every_slice_to_parent_path(tmp_path):
     slices = [u for u in units if isinstance(u, FileSlice)]
     assert len(slices) >= 2
     prompt = llm._read_files(units, tmp_path)
-    rels = re.findall(r'<untrusted_source path="([^"]+)"', prompt)
+    rels = re.findall(r'<untrusted_source sha256="[0-9a-f]+">\nsource_file: (.+)\n', prompt)
     # one block per slice, all pointing at the same parent path
     assert rels == ["doc.md"] * len(slices)
 
