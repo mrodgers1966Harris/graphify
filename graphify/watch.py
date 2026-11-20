@@ -11,6 +11,7 @@ from pathlib import Path
 
 # Single source of truth in graphify.paths (#1423); re-exported as _GRAPHIFY_OUT.
 from graphify.paths import GRAPHIFY_OUT as _GRAPHIFY_OUT
+from graphify.safe_io import ensure_dir, open_append, open_append_read, write_text
 _PENDING_FILENAME = ".pending_changes"
 _PENDING_DRAIN_MAX_PASSES = 20
 
@@ -30,10 +31,9 @@ def _queue_pending(out_dir: Path, changed_paths: list[Path]) -> None:
     """
     if not changed_paths:
         return
-    out_dir.mkdir(parents=True, exist_ok=True)
     pending = out_dir / _PENDING_FILENAME
     payload = "".join(f"{os.fspath(p)}\n" for p in changed_paths)
-    with open(pending, "a", encoding="utf-8") as fh:
+    with open_append(pending, encoding="utf-8") as fh:
         fh.write(payload)
 
 
@@ -111,12 +111,11 @@ def _rebuild_lock(out_dir: Path, *, blocking: bool = False):
         yield True
         return
 
-    out_dir.mkdir(parents=True, exist_ok=True)
     lock_path = out_dir / ".rebuild.lock"
     # "a+" creates the file if missing without truncating an existing holder's
     # PID payload — important because another process may have already written
     # its PID before we attempt the flock.
-    fh = open(lock_path, "a+", encoding="utf-8")
+    fh = open_append_read(lock_path, encoding="utf-8")
     acquired = False
     try:
         flags = fcntl.LOCK_EX if blocking else (fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -746,6 +745,7 @@ def _rebuild_code(
     project_root = Path.cwd().resolve() if not watch_path.is_absolute() else watch_root
     report_root = _report_root_label(watch_path)
     try:
+        ensure_dir(out)
         from graphify.extract import extract, _get_extractor
         from graphify.detect import detect
         from graphify.build import build_from_json, _norm_source_file as _nsf
@@ -864,7 +864,7 @@ def _rebuild_code(
         else:
             rebuilt_sources = {(_nsf(str(p), _rebuilt_root) or str(p)) for p in extract_targets}
         rebuilt_sources |= set(deleted_paths)
-        out.mkdir(exist_ok=True)
+        ensure_dir(out)
 
         if no_cluster:
             # Normalise to "links" key so schema is consistent with the full clustered path.
@@ -896,11 +896,11 @@ def _rebuild_code(
                     rebuilt_sources=rebuilt_sources,
                 ):
                     return False
-                existing_graph.write_text(candidate_graph_text, encoding="utf-8")
+                write_text(existing_graph, candidate_graph_text, encoding="utf-8")
 
             # Write the user-supplied path only after the candidate graph is
             # accepted, so a refused shrink cannot mismatch graph and marker.
-            (out / ".graphify_root").write_text(str(watch_path), encoding="utf-8")
+            write_text(out / ".graphify_root", str(watch_path), encoding="utf-8")
 
             try:
                 from graphify.detect import save_manifest
@@ -1014,10 +1014,10 @@ def _rebuild_code(
             from graphify.export import backup_if_protected as _backup
             _backup(out)
             graph_tmp.replace(existing_graph)
-            report_path.write_text(report, encoding="utf-8")
-            labels_file.write_text(labels_json, encoding="utf-8")
+            write_text(report_path, report, encoding="utf-8")
+            write_text(labels_file, labels_json, encoding="utf-8")
 
-        (out / ".graphify_root").write_text(str(watch_path), encoding="utf-8")
+        write_text(out / ".graphify_root", str(watch_path), encoding="utf-8")
 
         try:
             from graphify.detect import save_manifest
@@ -1092,8 +1092,7 @@ def check_update(watch_path: Path) -> bool:
 def _notify_only(watch_path: Path) -> None:
     """Write a flag file and print a notification (fallback for non-code-only corpora)."""
     flag = watch_path / _GRAPHIFY_OUT / "needs_update"
-    flag.parent.mkdir(parents=True, exist_ok=True)
-    flag.write_text("1", encoding="utf-8")
+    write_text(flag, "1", encoding="utf-8")
     print(f"\n[graphify watch] New or changed files detected in {watch_path}")
     print("[graphify watch] Non-code files changed - semantic re-extraction requires LLM.")
     print("[graphify watch] Run `/graphify --update` in Claude Code to update the graph.")

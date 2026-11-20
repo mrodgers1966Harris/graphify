@@ -36,6 +36,7 @@ from typing import Any
 
 from graphify.ingest import OUTCOMES
 from graphify.paths import GRAPHIFY_OUT_NAME
+from graphify.safe_io import write_text
 
 _UNCATEGORIZED = "Uncategorized"
 
@@ -596,8 +597,7 @@ def reflect(memory_dir: Path, out_path: Path,
                             min_corroboration=min_corroboration,
                             known_nodes=known_nodes)
     out_path = Path(out_path)
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(render_lessons_md(agg), encoding="utf-8")
+    write_text(out_path, render_lessons_md(agg), encoding="utf-8")
 
     # Also project a derived experiential sidecar next to graph.json when a graph
     # is in hand. Best-effort: a sidecar failure must never break LESSONS.md.
@@ -830,7 +830,8 @@ def write_learning_sidecar(agg: dict[str, Any], graph_path: Path,
     """
     overlay = build_learning_overlay(agg, graph_path, now=now)
     sidecar = Path(graph_path).parent / LEARNING_SIDECAR_NAME
-    sidecar.write_text(
+    write_text(
+        sidecar,
         json.dumps(overlay, indent=2, sort_keys=True, ensure_ascii=False) + "\n",
         encoding="utf-8",
     )

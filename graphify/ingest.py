@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from graphify.security import safe_fetch, safe_fetch_text, validate_url
+from graphify.safe_io import ensure_dir, write_bytes, write_text
 
 
 def _yaml_str(s: str) -> str:
@@ -211,7 +212,7 @@ def _download_binary(url: str, suffix: str, target_dir: Path) -> Path:
     """Download a binary file (PDF, image) directly."""
     filename = _safe_filename(url, suffix)
     out_path = target_dir / filename
-    out_path.write_bytes(safe_fetch(url))
+    write_bytes(out_path, safe_fetch(url))
     return out_path
 
 
@@ -221,7 +222,7 @@ def ingest(url: str, target_dir: Path, author: str | None = None, contributor: s
 
     Returns the path of the saved file.
     """
-    target_dir.mkdir(parents=True, exist_ok=True)
+    ensure_dir(target_dir)
     url_type = _detect_url_type(url)
 
     try:
@@ -264,7 +265,7 @@ def ingest(url: str, target_dir: Path, author: str | None = None, contributor: s
         out_path = target_dir / f"{stem}_{counter}.md"
         counter += 1
 
-    out_path.write_text(content, encoding="utf-8")
+    write_text(out_path, content, encoding="utf-8")
     print(f"Saved {url_type}: {out_path.name}")
     return out_path
 
@@ -295,7 +296,7 @@ def save_query_result(
         raise ValueError(f"outcome must be one of {OUTCOMES}, got {outcome!r}")
 
     memory_dir = Path(memory_dir)
-    memory_dir.mkdir(parents=True, exist_ok=True)
+    ensure_dir(memory_dir)
 
     now = datetime.now(timezone.utc)
     slug = re.sub(r"[^\w]", "_", question.lower())[:50].strip("_")
@@ -337,7 +338,7 @@ def save_query_result(
 
     content = "\n".join(frontmatter_lines + body_lines)
     out_path = memory_dir / filename
-    out_path.write_text(content, encoding="utf-8")
+    write_text(out_path, content, encoding="utf-8")
     return out_path
 
 

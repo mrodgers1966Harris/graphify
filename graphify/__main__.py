@@ -22,6 +22,7 @@ except Exception:
 # Defined once in graphify.paths so the security/callflow path guards honour the
 # same override (#1423).
 from graphify.paths import GRAPHIFY_OUT as _GRAPHIFY_OUT
+from graphify.safe_io import ensure_dir as _ensure_dir, write_text as _write_text
 
 
 @functools.lru_cache(maxsize=None)
@@ -3548,7 +3549,7 @@ def main() -> None:
         surprises = surprising_connections(G, communities)
         stages.mark("analyze")
         out = watch_path / _GRAPHIFY_OUT
-        out.mkdir(parents=True, exist_ok=True)
+        _ensure_dir(out)
         labels_path = out / ".graphify_labels.json"
         existing_labels: dict[int, str] = {}
         if labels_path.exists():
@@ -3667,7 +3668,7 @@ def main() -> None:
                           tokens, str(watch_path), suggested_questions=questions,
                           min_community_size=min_community_size, built_at_commit=_commit,
                           learning=_llfr(out / "graph.json"))
-        (out / "GRAPH_REPORT.md").write_text(report, encoding="utf-8")
+        _write_text(out / "GRAPH_REPORT.md", report, encoding="utf-8")
         stages.mark("report")
         from graphify.export import backup_if_protected as _backup
         _backup(out)
@@ -3678,16 +3679,18 @@ def main() -> None:
             "surprises": surprises,
             "questions": questions,
         }
-        (out / ".graphify_analysis.json").write_text(
+        _write_text(
+            out / ".graphify_analysis.json",
             json.dumps(analysis, indent=2, ensure_ascii=False),
             encoding="utf-8",
         )
         to_json(G, communities, str(out / "graph.json"), community_labels=labels)
-        labels_path.write_text(json.dumps({str(k): v for k, v in labels.items()}, ensure_ascii=False), encoding="utf-8")
+        _write_text(labels_path, json.dumps({str(k): v for k, v in labels.items()}, ensure_ascii=False), encoding="utf-8")
         # Membership signatures beside the labels so a later cluster-only can detect
         # which communities changed and avoid reusing a stale label (see reuse above).
         from graphify.cluster import community_member_sigs as _cms
-        (labels_path.parent / (labels_path.name + ".sig")).write_text(
+        _write_text(
+            labels_path.parent / (labels_path.name + ".sig"),
             json.dumps({str(k): v for k, v in _cms(communities).items()}), encoding="utf-8")
 
         # Mirror watch.py pattern: gate to_html so core outputs (graph.json +
@@ -3958,8 +3961,7 @@ def main() -> None:
             out_data = _jg.node_link_data(merged, edges="links")
         except TypeError:
             out_data = _jg.node_link_data(merged)
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_text(json.dumps(out_data, indent=2), encoding="utf-8")
+        _write_text(out_path, json.dumps(out_data, indent=2), encoding="utf-8")
         print(f"Merged {len(graphs)} graphs -> {merged.number_of_nodes()} nodes, {merged.number_of_edges()} edges")
         print(f"Written to: {out_path}")
 
@@ -4536,7 +4538,7 @@ def main() -> None:
         # the skill.md pipeline.
         out_root = (out_dir.resolve() if out_dir else target)
         graphify_out = out_root / _GRAPHIFY_OUT
-        graphify_out.mkdir(parents=True, exist_ok=True)
+        _ensure_dir(graphify_out)
 
         stages = _StageTimer(cli_timing)
 
@@ -4923,9 +4925,7 @@ def main() -> None:
                         _node_sf.get(_e.get("source")) or _node_sf.get(_e.get("target")) or ""
                     )
             _backup(graphify_out)
-            graph_json_path.write_text(
-                json.dumps(merged, indent=2), encoding="utf-8"
-            )
+            _write_text(graph_json_path, json.dumps(merged, indent=2), encoding="utf-8")
             stages.mark("write")
             cost = _estimate_cost(
                 backend, merged["input_tokens"], merged["output_tokens"]
@@ -5010,7 +5010,8 @@ def main() -> None:
         _to_json(G, communities, str(graph_json_path), force=True)
         stages.mark("export")
         if merged.get("output_tokens", 0) > 0:
-            (graphify_out / ".graphify_semantic_marker").write_text(
+            _write_text(
+                graphify_out / ".graphify_semantic_marker",
                 json.dumps({"output_tokens": merged["output_tokens"]}), encoding="utf-8"
             )
         if global_merge:
@@ -5035,7 +5036,7 @@ def main() -> None:
                 "output": merged["output_tokens"],
             },
         }
-        analysis_path.write_text(json.dumps(analysis, indent=2), encoding="utf-8")
+        _write_text(analysis_path, json.dumps(analysis, indent=2), encoding="utf-8")
         try:
             _save_manifest(_manifest_files, manifest_path=str(manifest_path), kind="both", root=target)
         except Exception as exc:
@@ -5097,14 +5098,15 @@ def main() -> None:
         files = [f for f in files_from.read_text(encoding="utf-8").splitlines() if f.strip()]
         cached_nodes, cached_edges, cached_hyperedges, uncached = check_semantic_cache(files, root)
         out = root / _GRAPHIFY_OUT
-        out.mkdir(parents=True, exist_ok=True)
+        _ensure_dir(out)
         if cached_nodes or cached_edges or cached_hyperedges:
-            (out / ".graphify_cached.json").write_text(
+            _write_text(
+                out / ".graphify_cached.json",
                 json.dumps({"nodes": cached_nodes, "edges": cached_edges, "hyperedges": cached_hyperedges},
                            ensure_ascii=False),
                 encoding="utf-8",
             )
-        (out / ".graphify_uncached.txt").write_text("\n".join(uncached), encoding="utf-8")
+        _write_text(out / ".graphify_uncached.txt", "\n".join(uncached), encoding="utf-8")
         print(f"Cache: {len(files) - len(uncached)} hit, {len(uncached)} miss")
 
     elif cmd == "merge-chunks":
@@ -5148,8 +5150,7 @@ def main() -> None:
             merged["hyperedges"].extend(chunk.get("hyperedges", []))
             merged["input_tokens"] += chunk.get("input_tokens", 0)
             merged["output_tokens"] += chunk.get("output_tokens", 0)
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_text(json.dumps(merged, ensure_ascii=False), encoding="utf-8")
+        _write_text(out_path, json.dumps(merged, ensure_ascii=False), encoding="utf-8")
         print(
             f"Merged {len(chunk_files)} chunks: {len(merged['nodes'])} nodes, {len(merged['edges'])} edges, "
             f"{merged['input_tokens']:,} in / {merged['output_tokens']:,} out tokens"
@@ -5192,8 +5193,7 @@ def main() -> None:
             "edges": cached_data.get("edges", []) + new_data.get("edges", []),
             "hyperedges": cached_data.get("hyperedges", []) + new_data.get("hyperedges", []),
         }
-        out_path2.parent.mkdir(parents=True, exist_ok=True)
-        out_path2.write_text(json.dumps(merged2, ensure_ascii=False), encoding="utf-8")
+        _write_text(out_path2, json.dumps(merged2, ensure_ascii=False), encoding="utf-8")
         print(f"Merged: {len(merged2['nodes'])} nodes, {len(merged2['edges'])} edges")
 
     elif Path(cmd).exists() or cmd in (".", "..") or cmd.startswith(("./", "../", "/", "~")):

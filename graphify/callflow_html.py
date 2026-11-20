@@ -1963,8 +1963,8 @@ def write_callflow_html(
 
     # Write output
     output = "\n".join(html)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(output, encoding="utf-8")
+    from graphify.safe_io import write_text
+    write_text(output_path, output, encoding="utf-8")
 
     # Summary
     mermaid_count = output.count('<div class="mermaid">')

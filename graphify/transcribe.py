@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 
 from graphify.paths import out_path as _out_path
+from graphify.safe_io import ensure_dir, write_text
 
 
 VIDEO_EXTENSIONS = {'.mp4', '.mov', '.webm', '.mkv', '.avi', '.m4v', '.mp3', '.wav', '.m4a', '.ogg'}
@@ -131,7 +132,7 @@ def transcribe(
     force: re-transcribe even if transcript already exists.
     """
     out_dir = Path(output_dir) if output_dir else Path(_TRANSCRIPTS_DIR)
-    out_dir.mkdir(parents=True, exist_ok=True)
+    ensure_dir(out_dir)
 
     if is_url(str(video_path)):
         audio_path = download_audio(str(video_path), out_dir / "downloads")
@@ -157,7 +158,7 @@ def transcribe(
     lines = [segment.text.strip() for segment in segments if segment.text.strip()]
     transcript = "\n".join(lines)
 
-    transcript_path.write_text(transcript, encoding="utf-8")
+    write_text(transcript_path, transcript, encoding="utf-8")
     lang = info.language if hasattr(info, "language") else "unknown"
     print(f"  transcript saved -> {transcript_path} (lang={lang}, {len(lines)} segments)")
     return transcript_path
