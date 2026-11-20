@@ -30,7 +30,7 @@ Fix this **without inventing tokens** by expanding the query against the actual 
 ```bash
 $(cat graphify-out/.graphify_python) -c "
 import json, re
-from pathlib import Path
+from graphify.safe_io import OutputPath as Path
 data = json.loads(Path('graphify-out/graph.json').read_text(encoding='utf-8'))
 vocab = set()
 for n in data['nodes']:

@@ -877,6 +877,101 @@ def _is_shebang_allowlist_fix_line(line: str) -> bool:
     return "[!a-zA-Z0-9/_." in line
 
 
+def _is_output_symlink_fix_line(line: str) -> bool:
+    """Whether a line is part of the no-follow output-write fix.
+
+    A repository can commit ``graphify-out/<name>`` as a symlink; the runbooks
+    wrote those paths with ``open(..., 'w')``, ``Path.write_text`` and shell
+    redirects, all of which follow the link and truncate its target. Python
+    blocks that write now import ``graphify.safe_io.OutputPath as Path``,
+    redirects become ``graphify.safe_io.write_text`` calls (so the closing
+    quote stands alone), and the code-only fast path writes the empty semantic
+    file Part C reads (the core skill already did; its removed one-line form
+    and the reformatted only-deletions literal match here too). Chunk files
+    are written by the host's own tool, so leftover ones are removed first.
+    """
+    s = line.strip()
+    return (
+        "graphify.safe_io" in line
+        or s == "from pathlib import Path"
+        or "open('graphify-out/.graphify_python', 'w'" in line
+        or s == "mkdir -p graphify-out"
+        or s.startswith("# Write interpreter path for all subsequent steps")
+        or "a redirect follows a symlink" in line
+        or s in ("print(json.dumps(result))", "print(json.dumps(transcript_paths))", '"')
+        or (s.startswith('" > ') and ".graphify_" in s)
+        or "write_text('graphify-out/.graphify_detect.json'" in line
+        or ".graphify_transcripts.json').write_text(" in line
+        or s.startswith("**Fast path:** If detection found zero docs, papers, and images")
+        or ".graphify_semantic.json').write_text(json.dumps({'nodes':[]" in line
+        or ".graphify_extract.json').write_text(json.dumps({'nodes'" in line
+        or s in ("```bash", "```", "import json", "import sys, json")
+        or "with the host's own file tool" in line
+        or "remove any already present (e.g. committed" in line
+        or s in ("for stale in Path('graphify-out').glob('.graphify_chunk_*.json'):", "stale.unlink()")
+    )
+
+
+def _is_aider_out_dir_fix_line(line: str) -> bool:
+    """Whether a line is part of moving aider's intermediates into graphify-out/.
+
+    The aider runbook kept ``.graphify_*.json`` intermediates in the project
+    root while its own transcription and ``--update`` blocks read and wrote
+    ``graphify-out/.graphify_*``, so those flows missed each other's files.
+    Every intermediate now lives under ``graphify-out/`` like the other hosts;
+    both the old root-relative and new prefixed forms of those lines match.
+    """
+    return re.search(r"(?<![\w/])\.graphify_|graphify-out/\.graphify_", line) is not None
+
+
+_CLUSTER_ONLY_INLINE_LINES = frozenset({
+    "from graphify.cluster import cluster, score_all",
+    "from graphify.analyze import god_nodes, surprising_connections",
+    "from graphify.report import generate",
+    "from graphify.export import to_json",
+    "from networkx.readwrite import json_graph",
+    "import networkx as nx",
+    "data = json.loads(Path('graphify-out/graph.json').read_text())",
+    "G = json_graph.node_link_graph(data, edges='links')",
+    "detection = {'total_files': 0, 'total_words': 99999, 'needs_graph': True, 'warning': None,",
+    "'files': {'code': [], 'document': [], 'paper': []}}",
+    "tokens = {'input': 0, 'output': 0}",
+    "communities = cluster(G)",
+    "cohesion = score_all(G, communities)",
+    "gods = god_nodes(G)",
+    "surprises = surprising_connections(G, communities)",
+    "labels = {cid: 'Community ' + str(cid) for cid in communities}",
+    "report = generate(G, communities, cohesion, labels, gods, surprises, detection, tokens, '.')",
+    "Path('graphify-out/GRAPH_REPORT.md').write_text(report)",
+    "analysis = {",
+    "'communities': {str(k): v for k, v in communities.items()},",
+    "'cohesion': {str(k): v for k, v in cohesion.items()},",
+    "'gods': gods,",
+    "'surprises': surprises,",
+    "}",
+    "print(f'Re-clustered: {len(communities)} communities')",
+    "$(cat graphify-out/.graphify_python) -m graphify cluster-only .",
+})
+
+
+def _is_cluster_only_cli_fix_line(line: str) -> bool:
+    """Whether a line is part of routing monolith ``--cluster-only`` through the CLI.
+
+    The monoliths re-clustered with an inline block and then said to re-run
+    Steps 5-9, which read intermediates the previous build's cleanup deleted
+    (``FileNotFoundError``, #1392). Like the split skills, they now run
+    ``graphify cluster-only .``, which is self-contained. The removed inline
+    block's lines and the added CLI section match here.
+    """
+    s = line.strip()
+    return (
+        s in _CLUSTER_ONLY_INLINE_LINES
+        or (s.startswith("Skip Steps 1") and "clustering" in s)
+        or (s.startswith("Then run Steps 5") and "as normal" in s)
+        or s.startswith("`graphify cluster-only .` is **self-contained**")
+    )
+
+
 # Every line that may differ between a rendered monolith and its pristine v8
 # baseline. Each predicate documents one sanctioned change-class; a blank line is
 # allowed because the multi-line fix blocks insert spacing. Anything else failing
@@ -892,6 +987,9 @@ _SANCTIONED_MONOLITH_DIFFS = (
     _is_manifest_root_fix_line,
     _is_no_api_key_fix_line,
     _is_shebang_allowlist_fix_line,
+    _is_output_symlink_fix_line,
+    _is_aider_out_dir_fix_line,
+    _is_cluster_only_cli_fix_line,
 )
 
 

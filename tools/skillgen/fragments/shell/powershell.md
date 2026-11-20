@@ -50,10 +50,12 @@ if (-not $GRAPHIFY_PYTHON) {
     $GRAPHIFY_PYTHON = Find-GraphifyPython
 }
 
-# Save interpreter path — all subsequent steps read this
-$GRAPHIFY_PYTHON | Out-File -FilePath graphify-out\.graphify_python -Encoding utf8 -NoNewline
+# Save interpreter path — all subsequent steps read this. Written through graphify.safe_io,
+# not Out-File, which would follow a symlink committed at these graphify-out paths.
+$GRAPHIFY_WRITE = "import sys; from graphify.safe_io import write_text; write_text(sys.argv[1], sys.argv[2], encoding='utf-8')"
+& $GRAPHIFY_PYTHON -c $GRAPHIFY_WRITE graphify-out\.graphify_python $GRAPHIFY_PYTHON
 # Save scan root so `graphify update` (no args) knows where to look next time
-(Resolve-Path INPUT_PATH).Path | Out-File -FilePath graphify-out\.graphify_root -Encoding utf8 -NoNewline
+& $GRAPHIFY_PYTHON -c $GRAPHIFY_WRITE graphify-out\.graphify_root (Resolve-Path INPUT_PATH).Path
 ```
 
 If the import succeeds, print nothing and move straight to Step 2.

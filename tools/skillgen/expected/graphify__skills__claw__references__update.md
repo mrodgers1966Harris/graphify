@@ -10,7 +10,7 @@ Use when you've added or modified files since the last run. Only re-extracts cha
 $(cat graphify-out/.graphify_python) -c "
 import sys, json
 from graphify.detect import detect_incremental, save_manifest
-from pathlib import Path
+from graphify.safe_io import OutputPath as Path
 
 result = detect_incremental(Path('INPUT_PATH'))
 new_total = result.get('new_total', 0)
@@ -32,7 +32,7 @@ Then populate `.graphify_detect.json` so Steps 3A–6 (which read it uncondition
 ```bash
 $(cat graphify-out/.graphify_python) -c "
 import json
-from pathlib import Path
+from graphify.safe_io import OutputPath as Path
 r = json.loads(Path('graphify-out/.graphify_incremental.json').read_text(encoding=\"utf-8\"))
 Path('graphify-out/.graphify_detect.json').write_text(json.dumps({
     'files': r.get('new_files', {}),
@@ -73,7 +73,7 @@ if [ ! -f graphify-out/.graphify_extract.json ]; then
     echo '[graphify update] Only deletions -- creating empty extraction for merge.'
     $(cat graphify-out/.graphify_python) -c "
 import json
-from pathlib import Path
+from graphify.safe_io import OutputPath as Path
 Path('graphify-out/.graphify_extract.json').write_text(json.dumps({'nodes':[],'edges':[],'hyperedges':[],'input_tokens':0,'output_tokens':0}), encoding='utf-8')
 "
 fi
@@ -85,7 +85,7 @@ Then:
 ```bash
 $(cat graphify-out/.graphify_python) -c "
 import json
-from pathlib import Path
+from graphify.safe_io import OutputPath as Path
 from graphify.build import build_merge
 from graphify.detect import save_manifest
 
@@ -176,7 +176,7 @@ if old_data:
 "
 ```
 
-Before the merge step, save the old graph: `cp graphify-out/graph.json graphify-out/.graphify_old.json`
+Before the merge step, save the old graph (not with `cp`, which writes through a symlink at the destination): `$(cat graphify-out/.graphify_python) -c "from graphify.safe_io import OutputPath as Path; Path('graphify-out/.graphify_old.json').write_bytes(Path('graphify-out/graph.json').read_bytes())"`
 Clean up after: `rm -f graphify-out/.graphify_old.json`
 
 ---
