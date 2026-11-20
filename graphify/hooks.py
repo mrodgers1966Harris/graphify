@@ -35,21 +35,10 @@ _PINNED='__PINNED_PYTHON__'
 if [ -n "$_PINNED" ] && [ -x "$_PINNED" ] && "$_PINNED" -c "$_GFY_PROBE" 2>/dev/null; then
     GRAPHIFY_PYTHON="$_PINNED"
 fi
-# Second probe: read graphify-out/.graphify_python (written by the skill and
-# CLI; survives uv-tool reinstalls and is the same source the README documents).
-if [ -z "$GRAPHIFY_PYTHON" ]; then
-    _GFY_PYTHON_FILE="graphify-out/.graphify_python"
-    if [ -f "$_GFY_PYTHON_FILE" ]; then
-        _FROM_FILE=$(cat "$_GFY_PYTHON_FILE" 2>/dev/null | tr -d '[:space:]')
-        case "$_FROM_FILE" in
-            *[!a-zA-Z0-9/_.@:\\-]*) _FROM_FILE="" ;;  # allowlist (covers Windows paths)
-        esac
-        if [ -n "$_FROM_FILE" ] && [ -x "$_FROM_FILE" ] && "$_FROM_FILE" -c "$_GFY_PROBE" 2>/dev/null; then
-            GRAPHIFY_PYTHON="$_FROM_FILE"
-        fi
-    fi
-fi
-# Third probe: resolve via the graphify launcher on PATH.
+# Never take an interpreter path from the work tree (e.g. the skill's
+# graphify-out/.graphify_python): its contents arrive with any commit, branch or
+# clone, and git runs this hook as the developer on the next commit or checkout.
+# Second probe: resolve via the graphify launcher on PATH.
 if [ -z "$GRAPHIFY_PYTHON" ]; then
     GRAPHIFY_BIN=$(command -v graphify 2>/dev/null)
     if [ -n "$GRAPHIFY_BIN" ]; then
@@ -79,8 +68,11 @@ if [ -z "$GRAPHIFY_PYTHON" ]; then
         esac
         # Allowlist: only keep characters valid in a filesystem path to prevent
         # injection if the shebang contains shell metacharacters.
+        # A relative path with a slash resolves against the work tree; only an
+        # absolute path or a bare name looked up on PATH is accepted.
         case "$GRAPHIFY_PYTHON" in
             *[!a-zA-Z0-9/_.@-]*) GRAPHIFY_PYTHON="" ;;
+            [!/]*/*) GRAPHIFY_PYTHON="" ;;
         esac
         if [ -n "$GRAPHIFY_PYTHON" ] && ! "$GRAPHIFY_PYTHON" -c "$_GFY_PROBE" 2>/dev/null; then
             GRAPHIFY_PYTHON=""
@@ -506,6 +498,10 @@ def install(path: Path = Path(".")) -> str:
         # Path contains characters outside the allowlist (spaces, quotes, etc.).
         # Embed an empty string so the pinned probe is skipped and the hook
         # falls through to the dynamic detection — safe degradation.
+        _safe = ""
+    elif not os.path.isabs(_safe):
+        # The hook runs from the work-tree root, so a relative pin would name a
+        # file inside the repository.
         _safe = ""
     pinned = _safe
     hook = _HOOK_SCRIPT.replace("__PINNED_PYTHON__", pinned)
