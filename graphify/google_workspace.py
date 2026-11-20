@@ -21,6 +21,20 @@ from typing import Callable, Any
 
 GOOGLE_WORKSPACE_EXTENSIONS = {".gdoc", ".gsheet", ".gslides"}
 
+# Shortcut files come from the scanned tree, so anyone who can commit one picks
+# the Drive id. Export runs with the user's own gws login, so the user must name
+# every id that may be exported, and separately every id whose text may enter
+# the extraction corpus (and from there the configured LLM).
+ALLOW_FILE_IDS_ENV = "GRAPHIFY_GOOGLE_WORKSPACE_ALLOW_FILE_IDS"
+CORPUS_FILE_IDS_ENV = "GRAPHIFY_GOOGLE_WORKSPACE_CORPUS_FILE_IDS"
+
+_GOOGLE_SHORTCUT_HOSTS = frozenset({"docs.google.com", "drive.google.com"})
+_DRIVE_FILE_ID_RE = re.compile(r"[A-Za-z0-9_-]{1,256}")
+
+
+class GoogleWorkspaceExportNotAllowed(RuntimeError):
+    """Raised when a shortcut names a Drive file the user has not allowlisted."""
+
 
 def google_workspace_enabled(value: str | None = None) -> bool:
     """Return True when Google Workspace shortcut export is enabled."""
@@ -28,22 +42,52 @@ def google_workspace_enabled(value: str | None = None) -> bool:
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _env_file_ids(name: str) -> frozenset[str]:
+    raw = os.environ.get(name, "")
+    return frozenset(part for part in re.split(r"[\s,]+", raw) if part)
+
+
+def allowed_export_file_ids() -> frozenset[str]:
+    """Drive file ids the user allows graphify to export with their gws login."""
+    return _env_file_ids(ALLOW_FILE_IDS_ENV)
+
+
+def allowed_corpus_file_ids() -> frozenset[str]:
+    """Drive file ids whose exported text the user allows into the corpus."""
+    return _env_file_ids(CORPUS_FILE_IDS_ENV)
+
+
 def _safe_yaml_str(value: str) -> str:
     return value.replace("\\", "\\\\").replace('"', '\\"').replace("\n", " ").replace("\r", " ")
+
+
+def _parse_google_url(url: str) -> urllib.parse.ParseResult:
+    parsed = urllib.parse.urlparse(url)
+    host = (parsed.hostname or "").lower()
+    if parsed.scheme != "https" or host not in _GOOGLE_SHORTCUT_HOSTS:
+        raise RuntimeError(f"shortcut URL is not a Google Docs/Drive URL: {url!r}")
+    return parsed
+
+
+def _file_ids_from_url(url: str) -> list[str]:
+    """Return every Drive file ID named by a Google Docs/Drive URL."""
+    parsed = _parse_google_url(url)
+    ids = list(urllib.parse.parse_qs(parsed.query).get("id", []))
+    match = re.search(r"/(?:document|spreadsheets|presentation|file)/d/([^/?#]+)", parsed.path)
+    if match:
+        ids.append(match.group(1))
+    return ids
 
 
 def _extract_file_id_from_url(url: str) -> str | None:
     """Extract a Drive file ID from common Google Docs/Drive URL shapes."""
     if not url:
         return None
-    parsed = urllib.parse.urlparse(url)
-    query = urllib.parse.parse_qs(parsed.query)
-    if query.get("id"):
-        return query["id"][0]
-    match = re.search(r"/(?:document|spreadsheets|presentation|file)/d/([^/?#]+)", parsed.path)
-    if match:
-        return match.group(1)
-    return None
+    try:
+        ids = _file_ids_from_url(url)
+    except RuntimeError:
+        return None
+    return ids[0] if ids else None
 
 
 def _extract_resource_key(url: str, data: dict[str, Any]) -> str | None:
@@ -66,25 +110,39 @@ def read_google_shortcut(path: Path) -> dict[str, str | None]:
         data = json.loads(path.read_text(encoding="utf-8"))
     except Exception as exc:
         raise RuntimeError(f"could not read Google Workspace shortcut {path}: {exc}") from exc
+    if not isinstance(data, dict):
+        raise RuntimeError(f"Google Workspace shortcut {path} is not a JSON object")
 
+    # Every field that can name a file must name the same one; otherwise the id
+    # the user checks and the id that gets exported could differ.
+    candidates: set[str] = set()
+    for key in ("doc_id", "file_id", "fileId", "id"):
+        value = data.get(key)
+        if value:
+            candidates.add(str(value))
     url = str(data.get("url") or "")
-    file_id = (
-        data.get("doc_id")
-        or data.get("file_id")
-        or data.get("fileId")
-        or data.get("id")
-        or _extract_file_id_from_url(url)
-    )
-    if not file_id:
-        resource_id = str(data.get("resource_id") or "")
-        if ":" in resource_id:
-            file_id = resource_id.split(":", 1)[1]
+    if url:
+        try:
+            candidates.update(_file_ids_from_url(url))
+        except RuntimeError as exc:
+            raise RuntimeError(f"Google Workspace shortcut {path}: {exc}") from exc
+    resource_id = str(data.get("resource_id") or "")
+    if ":" in resource_id:
+        candidates.add(resource_id.split(":", 1)[1])
 
-    if not file_id:
+    if not candidates:
         raise RuntimeError(f"Google Workspace shortcut {path} does not include a Drive file ID")
+    if len(candidates) > 1:
+        raise RuntimeError(
+            f"Google Workspace shortcut {path} names more than one Drive file ID: "
+            + ", ".join(sorted(repr(c) for c in candidates))
+        )
+    file_id = next(iter(candidates))
+    if not _DRIVE_FILE_ID_RE.fullmatch(file_id):
+        raise RuntimeError(f"Google Workspace shortcut {path} has an invalid Drive file ID: {file_id!r}")
 
     return {
-        "file_id": str(file_id),
+        "file_id": file_id,
         "url": url or None,
         "resource_key": _extract_resource_key(url, data),
         "account": str(data.get("email")) if data.get("email") else None,
@@ -147,22 +205,56 @@ def _with_frontmatter(path: Path, shortcut: dict[str, str | None], body: str, ex
     )
 
 
+def authorize_google_workspace_export(
+    shortcut: dict[str, str | None],
+    allowed_file_ids: frozenset[str] | set[str] | None = None,
+) -> str:
+    """Return the shortcut's Drive file id if the user allowlisted it for export."""
+    allowed = allowed_export_file_ids() if allowed_file_ids is None else allowed_file_ids
+    file_id = shortcut.get("file_id") or ""
+    if not file_id or file_id not in allowed:
+        raise GoogleWorkspaceExportNotAllowed(
+            f"Drive file id {file_id!r} is not in {ALLOW_FILE_IDS_ENV}"
+        )
+    return file_id
+
+
+def google_workspace_corpus_allowed(
+    shortcut: dict[str, str | None],
+    corpus_file_ids: frozenset[str] | set[str] | None = None,
+) -> bool:
+    """Return True if the user allowed this shortcut's export into the corpus."""
+    allowed = allowed_corpus_file_ids() if corpus_file_ids is None else corpus_file_ids
+    file_id = shortcut.get("file_id") or ""
+    return bool(file_id) and file_id in allowed
+
+
 def convert_google_workspace_file(
     path: Path,
     out_dir: Path,
     *,
     xlsx_to_markdown: Callable[[Path], str] | None = None,
+    shortcut: dict[str, str | None] | None = None,
+    allowed_file_ids: frozenset[str] | set[str] | None = None,
 ) -> Path | None:
     """Export a Google Workspace shortcut to a Markdown sidecar.
 
+    ``shortcut`` is the parsed shortcut to act on; when omitted the file is read
+    once here. The export uses that record's file id, and only if the id is in
+    ``allowed_file_ids`` (default: ``GRAPHIFY_GOOGLE_WORKSPACE_ALLOW_FILE_IDS``).
+
     Returns the converted Markdown path, or None when conversion is unsupported
-    or produced no readable content.
+    or produced no readable content. Raises GoogleWorkspaceExportNotAllowed
+    without touching the filesystem or running gws when the id is not allowed.
     """
     ext = path.suffix.lower()
     if ext not in GOOGLE_WORKSPACE_EXTENSIONS:
         return None
 
-    shortcut = read_google_shortcut(path)
+    if shortcut is None:
+        shortcut = read_google_shortcut(path)
+    file_id = authorize_google_workspace_export(shortcut, allowed_file_ids)
+    shortcut = {**shortcut, "file_id": file_id}
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = _sidecar_path(path, out_dir)
 
@@ -170,7 +262,7 @@ def convert_google_workspace_file(
         with tempfile.NamedTemporaryFile("w+b", suffix=".md", delete=False, dir=out_dir) as tmp:
             tmp_path = Path(tmp.name)
         try:
-            _run_gws_export(shortcut["file_id"] or "", "text/markdown", tmp_path, shortcut.get("resource_key"))
+            _run_gws_export(file_id, "text/markdown", tmp_path, shortcut.get("resource_key"))
             body = tmp_path.read_text(encoding="utf-8", errors="replace")
         finally:
             tmp_path.unlink(missing_ok=True)
@@ -183,7 +275,7 @@ def convert_google_workspace_file(
         with tempfile.NamedTemporaryFile("w+b", suffix=".txt", delete=False, dir=out_dir) as tmp:
             tmp_path = Path(tmp.name)
         try:
-            _run_gws_export(shortcut["file_id"] or "", "text/plain", tmp_path, shortcut.get("resource_key"))
+            _run_gws_export(file_id, "text/plain", tmp_path, shortcut.get("resource_key"))
             body = tmp_path.read_text(encoding="utf-8", errors="replace")
         finally:
             tmp_path.unlink(missing_ok=True)
@@ -199,7 +291,7 @@ def convert_google_workspace_file(
             tmp_path = Path(tmp.name)
         try:
             _run_gws_export(
-                shortcut["file_id"] or "",
+                file_id,
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 tmp_path,
                 shortcut.get("resource_key"),

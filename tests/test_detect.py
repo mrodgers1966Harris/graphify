@@ -398,13 +398,15 @@ def test_detect_converts_google_workspace_shortcuts_when_enabled(tmp_path, monke
     shortcut = tmp_path / "notes.gdoc"
     shortcut.write_text('{"doc_id":"doc-1"}', encoding="utf-8")
 
-    def fake_convert(path, out_dir, *, xlsx_to_markdown=None):
+    def fake_convert(path, out_dir, *, xlsx_to_markdown=None, shortcut=None):
+        assert shortcut["file_id"] == "doc-1"
         out_dir.mkdir(parents=True, exist_ok=True)
         out = out_dir / "notes_converted.md"
         out.write_text("# Notes\n\nA converted Google Doc.", encoding="utf-8")
         return out
 
     monkeypatch.setattr("graphify.detect.convert_google_workspace_file", fake_convert)
+    monkeypatch.setenv("GRAPHIFY_GOOGLE_WORKSPACE_CORPUS_FILE_IDS", "doc-1")
 
     result = detect(tmp_path, google_workspace=True)
 

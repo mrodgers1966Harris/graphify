@@ -43,6 +43,7 @@ def test_convert_gdoc_to_markdown_sidecar(tmp_path, monkeypatch):
         output.write_text("# Planning\n\nExported doc text.", encoding="utf-8")
 
     monkeypatch.setattr(gw, "_run_gws_export", fake_export)
+    monkeypatch.setenv(gw.ALLOW_FILE_IDS_ENV, "doc-123")
 
     out = gw.convert_google_workspace_file(shortcut, tmp_path / "converted")
 
@@ -63,6 +64,7 @@ def test_convert_gsheet_uses_xlsx_markdown_callback(tmp_path, monkeypatch):
         output.write_bytes(b"xlsx")
 
     monkeypatch.setattr(gw, "_run_gws_export", fake_export)
+    monkeypatch.setenv(gw.ALLOW_FILE_IDS_ENV, "sheet-456")
 
     out = gw.convert_google_workspace_file(
         shortcut,

@@ -19,7 +19,10 @@ Before Pass 3, optional converters turn supported pointer/binary formats into
 Markdown sidecars under `graphify-out/converted/`. Office files (`.docx`,
 `.xlsx`) use the `[office]` extra. Google Workspace shortcuts (`.gdoc`,
 `.gsheet`, `.gslides`) are opt-in with `--google-workspace` or
-`GRAPHIFY_GOOGLE_WORKSPACE=1` and require an authenticated `gws` CLI.
+`GRAPHIFY_GOOGLE_WORKSPACE=1` and require an authenticated `gws` CLI. Only
+Drive file ids listed in `GRAPHIFY_GOOGLE_WORKSPACE_ALLOW_FILE_IDS` are
+exported, and only ids also listed in `GRAPHIFY_GOOGLE_WORKSPACE_CORPUS_FILE_IDS`
+are added to the extraction corpus.
 
 ---
 

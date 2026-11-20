@@ -10,9 +10,14 @@ from enum import Enum
 from pathlib import Path
 
 from graphify.google_workspace import (
+    ALLOW_FILE_IDS_ENV,
+    CORPUS_FILE_IDS_ENV,
     GOOGLE_WORKSPACE_EXTENSIONS,
+    GoogleWorkspaceExportNotAllowed,
     convert_google_workspace_file,
+    google_workspace_corpus_allowed,
     google_workspace_enabled,
+    read_google_shortcut,
 )
 from graphify.paths import GRAPHIFY_OUT, GRAPHIFY_OUT_NAME, out_path
 
@@ -1140,9 +1145,29 @@ def detect(root: Path, *, follow_symlinks: bool | None = None, google_workspace:
                     )
                     continue
                 try:
-                    md_path = convert_google_workspace_file(p, converted_dir, xlsx_to_markdown=xlsx_to_markdown)
+                    shortcut = read_google_shortcut(p)
+                    md_path = convert_google_workspace_file(
+                        p,
+                        converted_dir,
+                        xlsx_to_markdown=xlsx_to_markdown,
+                        shortcut=shortcut,
+                    )
+                except GoogleWorkspaceExportNotAllowed as exc:
+                    skipped_sensitive.append(
+                        str(p)
+                        + f" [Google Workspace shortcut not exported: {exc}. Add the id to "
+                        f"{ALLOW_FILE_IDS_ENV} to export it with your gws login]"
+                    )
+                    continue
                 except Exception as exc:
                     skipped_sensitive.append(str(p) + f" [Google Workspace export failed: {exc}]")
+                    continue
+                if md_path and not google_workspace_corpus_allowed(shortcut):
+                    skipped_sensitive.append(
+                        str(p)
+                        + f" [Google Workspace export written to {md_path} but not added to the "
+                        f"corpus. Add the id to {CORPUS_FILE_IDS_ENV} to extract it]"
+                    )
                     continue
                 if md_path:
                     if _is_ignored(md_path, root, ignore_patterns, _cache=ignore_cache):
