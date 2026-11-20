@@ -36,4 +36,4 @@ echo "$(cd INPUT_PATH && pwd)" > graphify-out/.graphify_root
 
 If the import succeeds, print nothing and move straight to Step 2.
 
-**In every subsequent bash block, replace `python3` with `$(cat graphify-out/.graphify_python)` to use the correct interpreter.**
+**Every later bash block that runs Python starts with the interpreter check (the `GRAPHIFY_PY=` lines) and then calls `"${GRAPHIFY_PY:?}"` where a bare `python3` would go. Copy those lines unchanged into any bash block you add. Never execute the contents of `graphify-out/.graphify_python` any other way: a cloned repository can ship that file, and the check refuses relative paths and anything inside this project or its git work tree.**

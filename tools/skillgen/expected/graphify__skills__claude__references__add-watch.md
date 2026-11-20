@@ -7,7 +7,13 @@ Load this when the user ran `/graphify add <url>` or passed `--watch`. Neither i
 Fetch a URL and add it to the corpus, then update the graph.
 
 ```bash
-$(cat graphify-out/.graphify_python) -c "
+GRAPHIFY_PY="$(cat graphify-out/.graphify_python)"
+case "$GRAPHIFY_PY" in //*|/proc/*|/dev/*|*~*|*[/\\].[/\\]*|*[/\\]..[/\\]*|*[/\\].|*[/\\]..) GRAPHIFY_PY= ;; /*|[A-Za-z]:[/\\]*) ;; *) GRAPHIFY_PY= ;; esac
+_gdir="$(CDPATH= cd -P "${GRAPHIFY_PY%[/\\]*}/" 2>/dev/null && pwd -P)"
+_gchk="$(printf '|%s/' "$GRAPHIFY_PY" "$_gdir" "$(realpath "$GRAPHIFY_PY" 2>/dev/null)" | tr 'A-Z\\' 'a-z/')"
+for _gd in "$PWD" "$(pwd -P)" "$(git rev-parse --show-toplevel 2>/dev/null)"; do _gd="$(printf '%s' "$_gd" | tr 'A-Z\\' 'a-z/')"; [ -n "$_gd" ] && case "$_gchk" in *"|$_gd"/*) GRAPHIFY_PY= ;; esac; done
+[ -n "$_gdir" ] && [ -f "$GRAPHIFY_PY" ] && [ -x "$GRAPHIFY_PY" ] || { GRAPHIFY_PY=; echo "graphify: refusing graphify-out/.graphify_python - it must name an absolute Python outside this project; rerun the interpreter guard" >&2; }
+"${GRAPHIFY_PY:?}" -c "
 import sys
 from graphify.ingest import ingest
 from pathlib import Path
@@ -41,7 +47,13 @@ Supported URL types (auto-detected):
 Start a background watcher that monitors a folder and auto-updates the graph when files change.
 
 ```bash
-$(cat graphify-out/.graphify_python) -m graphify.watch INPUT_PATH --debounce 3
+GRAPHIFY_PY="$(cat graphify-out/.graphify_python)"
+case "$GRAPHIFY_PY" in //*|/proc/*|/dev/*|*~*|*[/\\].[/\\]*|*[/\\]..[/\\]*|*[/\\].|*[/\\]..) GRAPHIFY_PY= ;; /*|[A-Za-z]:[/\\]*) ;; *) GRAPHIFY_PY= ;; esac
+_gdir="$(CDPATH= cd -P "${GRAPHIFY_PY%[/\\]*}/" 2>/dev/null && pwd -P)"
+_gchk="$(printf '|%s/' "$GRAPHIFY_PY" "$_gdir" "$(realpath "$GRAPHIFY_PY" 2>/dev/null)" | tr 'A-Z\\' 'a-z/')"
+for _gd in "$PWD" "$(pwd -P)" "$(git rev-parse --show-toplevel 2>/dev/null)"; do _gd="$(printf '%s' "$_gd" | tr 'A-Z\\' 'a-z/')"; [ -n "$_gd" ] && case "$_gchk" in *"|$_gd"/*) GRAPHIFY_PY= ;; esac; done
+[ -n "$_gdir" ] && [ -f "$GRAPHIFY_PY" ] && [ -x "$GRAPHIFY_PY" ] || { GRAPHIFY_PY=; echo "graphify: refusing graphify-out/.graphify_python - it must name an absolute Python outside this project; rerun the interpreter guard" >&2; }
+"${GRAPHIFY_PY:?}" -m graphify.watch INPUT_PATH --debounce 3
 ```
 
 Replace INPUT_PATH with the folder to watch. Behavior depends on what changed:

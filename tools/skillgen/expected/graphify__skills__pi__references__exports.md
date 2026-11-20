@@ -59,17 +59,23 @@ graphify export graphml
 ### Step 7d - MCP server (only if --mcp flag)
 
 ```bash
-$(cat graphify-out/.graphify_python) -m graphify.serve graphify-out/graph.json
+GRAPHIFY_PY="$(cat graphify-out/.graphify_python)"
+case "$GRAPHIFY_PY" in //*|/proc/*|/dev/*|*~*|*[/\\].[/\\]*|*[/\\]..[/\\]*|*[/\\].|*[/\\]..) GRAPHIFY_PY= ;; /*|[A-Za-z]:[/\\]*) ;; *) GRAPHIFY_PY= ;; esac
+_gdir="$(CDPATH= cd -P "${GRAPHIFY_PY%[/\\]*}/" 2>/dev/null && pwd -P)"
+_gchk="$(printf '|%s/' "$GRAPHIFY_PY" "$_gdir" "$(realpath "$GRAPHIFY_PY" 2>/dev/null)" | tr 'A-Z\\' 'a-z/')"
+for _gd in "$PWD" "$(pwd -P)" "$(git rev-parse --show-toplevel 2>/dev/null)"; do _gd="$(printf '%s' "$_gd" | tr 'A-Z\\' 'a-z/')"; [ -n "$_gd" ] && case "$_gchk" in *"|$_gd"/*) GRAPHIFY_PY= ;; esac; done
+[ -n "$_gdir" ] && [ -f "$GRAPHIFY_PY" ] && [ -x "$GRAPHIFY_PY" ] || { GRAPHIFY_PY=; echo "graphify: refusing graphify-out/.graphify_python - it must name an absolute Python outside this project; rerun the interpreter guard" >&2; }
+"${GRAPHIFY_PY:?}" -m graphify.serve graphify-out/graph.json
 ```
 
 This starts a stdio MCP server that exposes tools: `query_graph`, `get_node`, `get_neighbors`, `get_community`, `god_nodes`, `graph_stats`, `shortest_path`. Add to Claude Desktop or any MCP-compatible agent orchestrator so other agents can query the graph live.
 
-To configure in Claude Desktop, add to `claude_desktop_config.json`. Claude Desktop can't run `$(...)`, and under `uv tool install` the system `python3` can't import graphify — so set `command` to the **absolute interpreter path** printed by `cat graphify-out/.graphify_python`:
+To configure in Claude Desktop, add to `claude_desktop_config.json`. Claude Desktop can't run `$(...)`, and under `uv tool install` the system `python3` can't import graphify — so set `command` to the **absolute interpreter path** that passes the interpreter check. Print it with the check lines from the block above followed by `printf '%s\n' "${GRAPHIFY_PY:?}"`; never copy the contents of `graphify-out/.graphify_python` unchecked, because a cloned repository can ship that file:
 ```json
 {
   "mcpServers": {
     "graphify": {
-      "command": "<absolute path from: cat graphify-out/.graphify_python>",
+      "command": "<absolute path printed by the interpreter check>",
       "args": ["-m", "graphify.serve", "/absolute/path/to/graphify-out/graph.json"]
     }
   }
